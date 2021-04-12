@@ -2,5 +2,5 @@ digraph G {
 		Q0[label="CompilationUnit"];
 		Q1[label="Function Definition"]
 		Q2[label="Type Specifier"]
-		Q3[label="int"];
+		Q3;
 }
