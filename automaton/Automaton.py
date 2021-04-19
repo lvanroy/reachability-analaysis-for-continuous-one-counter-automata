@@ -1,14 +1,13 @@
-from queue import Queue
-
 from automaton.Node import Node
 from automaton.Edge import Edge
 
 
 class Automaton:
     def __init__(self, name):
-        self.name = name        # the name of the automaton
-        self.nodes = dict()     # a node name to node object mapping
-        self.edges = dict()     # a start node name to edge object mapping
+        self.name = name            # the name of the automaton
+        self.nodes = dict()         # a node name to node object mapping
+        self.edges = dict()         # a start node name to edge object mapping
+        self.initial_node = None    # the initial node of the automaton
 
     # -- NODES
 
@@ -17,9 +16,6 @@ class Automaton:
 
     def create_new_node(self, node_name):
         self.nodes[node_name] = Node(node_name)
-
-    def get_nr_of_nodes(self):
-        return len(self.nodes)
 
     # -- node labels
 
@@ -36,6 +32,14 @@ class Automaton:
 
     def get_node_condition(self, node_name):
         return self.nodes[node_name].get_condition()
+
+    # -- node utility
+
+    def get_nr_of_nodes(self):
+        return len(self.nodes)
+
+    def set_node_invisible(self, node_name):
+        self.nodes[node_name].set_invisible()
 
     # -- EDGES
 
@@ -65,10 +69,29 @@ class Automaton:
 
     # -- edge operations
 
-    def add_operation_to_node(self, node_name, operation):
-        self.nodes[node_name].set_operation(operation)
+    def add_operation_to_edge(self, start, end, operation):
+        self.edges[start][end].set_operation(operation)
 
-    def get_node_operation(self, node_name):
-        return self.nodes[node_name].get_operation()
+    def get_edge_operation(self, start, end):
+        return self.edges[start][end].get_operation()
 
     # -- UTILITIES
+
+    def find_initial_node(self):
+        invisible_node = None
+
+        for node in self.nodes:
+            if self.nodes[node].is_invisible():
+                invisible_node = node
+                break
+
+        if invisible_node is None or \
+                invisible_node not in self.edges:
+            print("Error: no initial node was found, "
+                  "make sure that there is a node with an "
+                  "incoming edge originating from an invisible "
+                  "node.")
+            exit(-1)
+
+        potential_start_nodes = list(self.edges[invisible_node].values())
+        self.initial_node = potential_start_nodes[0]

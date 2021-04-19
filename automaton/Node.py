@@ -3,6 +3,7 @@ class Node:
         self.name = name
         self.label = None
         self.condition = None
+        self.invisible = False
 
     def set_label(self, label):
         self.label = label
@@ -15,3 +16,9 @@ class Node:
 
     def get_condition(self):
         return self.condition
+
+    def set_invisible(self):
+        self.invisible = True
+
+    def is_invisible(self):
+        return self.invisible

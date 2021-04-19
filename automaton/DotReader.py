@@ -1,20 +1,35 @@
 from automaton.Automaton import Automaton
+from automaton.Expression import Expression
 import operator
+import re
 
 
 class DotReader:
     def __init__(self, file_name):
         self.file_name = file_name
         self.edge_types = ["->", "--"]
+        self.automaton = None
+
+        # keep track of the number of newly added nodes/edges
+        # this is to provide an easy way to generate unique names
+        self.new_node_counter = 0
+        self.new_edge_counter = 0
 
         self.ops = {
-            "<": operator.lt,
             "<=": operator.le,
-            ">": operator.gt,
             ">=": operator.ge,
             "=": operator.eq,
-            "!=": operator.ne
+            "+": operator.add,
+            "-": operator.sub
         }
+
+        self.operation_matcher = re.compile(
+            r'([+-][0-9]+\n?)+'
+        )
+
+        self.condition_matcher = re.compile(
+            r'((<=|>=|=)[0-9]+\n?)+'
+        )
 
     def create_automaton(self):
         with open(self.file_name, "r") as f:
@@ -26,7 +41,7 @@ class DotReader:
                 # start of a graph
                 if tokens[0] == "digraph":
                     automaton_name = tokens[1].replace("{", "")
-                    automaton = Automaton(automaton_name)
+                    self.automaton = Automaton(automaton_name)
                     continue
 
                 # end of a graph
@@ -35,7 +50,7 @@ class DotReader:
 
                 # read out edge information
                 node = tokens[0]
-                self.add_node(automaton, node)
+                self.add_node(node)
 
                 # track the nodes that were discovered within this line
                 nodes = [node]
@@ -49,56 +64,135 @@ class DotReader:
                         edge = True
                         next_node = tokens[i + 1]
                         nodes.append(next_node)
-                        self.add_node(automaton, next_node)
-                        self.add_edge(automaton, node, next_node)
+                        self.add_node(next_node)
+                        self.add_edge(node, next_node)
 
                     # register label specification
-                    if tokens[i] == "label":
+                    if tokens[i] in ["label", "xlabel"]:
                         label = self.get_label(tokens[i + 1:])
+
+                        # ensure that we do not evaluate the label again
+                        i += 1
+
+                        # verify whether or not we are dealing with an expression
+                        expression = None
+                        is_condition = False
+                        if self.operation_matcher.match(label):
+                            expression = self.convert_label_to_expression(label)[0]
+                        if self.condition_matcher.match(label):
+                            expression = self.convert_label_to_expression(label)[0]
+                            is_condition = True
+
                         if edge:
-                            prev_node = nodes[0]
-                            for j in range(1, len(nodes)):
-                                next_node = nodes[j]
-                                self.set_edge_label(automaton, prev_node, next_node, label)
-                                prev_node = next_node
+                            # if is_condition is true, expression must be
+                            # true too so need to do an extra evaluation
+                            # insert an extra node to which we will attach the condition
+                            if is_condition:
+                                prev_node = nodes[0]
+                                for j in range(1, len(nodes)):
+                                    next_node = nodes[j]
+
+                                    in_between_node = "_{}".format(
+                                        self.new_node_counter
+                                    )
+                                    self.new_node_counter += 1
+
+                                    self.add_node(in_between_node)
+                                    self.add_edge(prev_node, in_between_node)
+                                    self.add_edge(in_between_node, next_node)
+                                    self.set_node_condition(in_between_node, expression)
+
+                                    prev_node = next_node
+
+                            # if the expression is an operation we can simply add
+                            # the expression to the edge
+                            else:
+                                prev_node = nodes[0]
+                                for j in range(1, len(nodes)):
+                                    next_node = nodes[j]
+
+                                    if expression is not None:
+                                        self.set_edge_operation(prev_node, next_node, expression)
+                                    else:
+                                        self.set_edge_label(prev_node, next_node, label)
+
+                                    prev_node = next_node
                         else:
-                            # verify that there is no xlabel given
-                            # xlabel should take precedence over normal labels
+                            # if we  did encounter an expression that was
+                            # not a condition we will add an edge and a secondary node
+                            # we will attach the found expression to the found edge
+                            if expression is not None and not is_condition:
+                                for j in range(len(nodes)):
+                                    start_node = nodes[j]
+
+                                    in_between_node = "_{}".format(
+                                        self.new_node_counter
+                                    )
+
+                                    in_between_edge = "_{}".format(
+                                        self.new_edge_counter
+                                    )
+
+                                    self.new_node_counter += 1
+                                    self.new_edge_counter += 1
+
+                                    self.add_node(in_between_node)
+                                    self.add_edge(start_node, in_between_node)
+                                    self.set_edge_operation(start_node, in_between_node, expression)
+
+                            elif expression is not None:
+                                for el in nodes:
+                                    self.set_node_condition(el, expression)
+
+                            else:
+                                for el in nodes:
+                                    self.set_node_label(el, label)
+
+                    # register type specification
+                    if tokens[i] == "style":
+                        style = tokens[i + 1]
+
+                        # ensure that we do not evaluate the style token again
+                        i += 1
+
+                        if style == "invis":
                             for el in nodes:
-                                if self.get_node_label(automaton, el) is None:
-                                    self.set_node_label(automaton, el, label)
+                                self.set_node_invisible(el)
 
-                    if tokens[i] == "xlabel":
-                        label = self.get_label(tokens[i + 1:])
-                        for el in nodes:
-                            self.set_node_label(automaton, el, label)
+        # find the initial node of the automaton
+        # if multiple nodes can be considered a random
+        # node will be selected
+        # if no nodes can be considered as the initial node
+        # the program will exit
+        self.find_initial_node()
 
-        return automaton
+        return self.automaton
 
     # -- NODE OPERATIONS
 
-    @staticmethod
-    def add_node(automaton, node_name):
-        if not automaton.node_exists(node_name):
-            automaton.create_new_node(node_name)
+    def add_node(self, node_name):
+        if not self.automaton.node_exists(node_name):
+            self.automaton.create_new_node(node_name)
 
-    @staticmethod
-    def set_node_label(automaton, node, label):
-        automaton.add_label_to_node(node, label)
+    def set_node_label(self, node, label):
+        self.automaton.add_label_to_node(node, label)
 
-    @staticmethod
-    def get_node_label(automaton, node):
-        automaton.get_node_label(node)
+    def set_node_condition(self, node, label):
+        self.automaton.add_condition_to_node(node, label)
+
+    def set_node_invisible(self, node):
+        self.automaton.set_node_invisible(node)
 
     # -- EDGE OPERATIONS
 
-    @staticmethod
-    def add_edge(automaton, node, next_node):
-        automaton.create_new_edge(node, next_node)
+    def add_edge(self, node, next_node):
+        self.automaton.create_new_edge(node, next_node)
 
-    @staticmethod
-    def set_edge_label(automaton, prev_node, next_node, label):
-        automaton.add_label_to_edge(prev_node, next_node, label)
+    def set_edge_label(self, prev_node, next_node, label):
+        self.automaton.add_label_to_edge(prev_node, next_node, label)
+
+    def set_edge_operation(self, prev_node, next_node, label):
+        self.automaton.add_operation_to_edge(prev_node, next_node, label)
 
     # -- LABEL OPERATIONS
 
@@ -116,27 +210,27 @@ class DotReader:
         tokens[0] = delimiter + label
         return ''.join(label.rsplit(delimiter, 1))
 
-    def convert_label_to_lambda(self, label):
+    def convert_label_to_expression(self, label):
         expressions = list()
 
-        constant = ""
-        op = ""
+        # iterate over all subexpressions part of the label
+        for sub_expr in label.split("\n"):
+            constant = ""
+            op = ""
 
-        for char in label:
-            if char.isnumeric() or char in ['+', '-']:
-                constant += char
-            else:
-                op += char
+            # iterate over the different characters within the label
+            # differentiate between constant and expression
+            for char in sub_expr:
+                if char.isnumeric():
+                    constant += char
+                else:
+                    op += char
 
-        f = None
-        if op in self.ops:
-            f = Expression(operator.le, float(constant))
-        else:
-            print("Error: no matching lambda function "
-                  "found for expression {}".format(op))
-            exit(-1)
+            # create an expression
+            f = Expression(self.ops[op], float(constant))
 
-        expressions.append(f)
+            expressions.append(f)
+
         return expressions
 
     # -- UTILITY FUNCTIONS
@@ -144,18 +238,26 @@ class DotReader:
     def generate_tokens(self, line):
         line = line.lstrip()
 
-        if line[-1] == ";":
-            line = line[:-1]
-
         # track whether or not we are defining a literal string
         string_def = False
-        for i in range(len(line)):
+        for i in reversed(range(len(line))):
             char = line[i]
             if char == '"':
                 string_def = not string_def
 
             if string_def:
                 continue
+
+            if char == ',':
+                # if we have a comma followed by a space
+                # simply remove the comma as it will be properly split
+                # in tokens as is
+                if line[i+1] == ' ':
+                    line = self.replace_str_index(line, i, '')
+                # if we do not have a space after the comma
+                # replace the comma by a space so that the tokens are properly split again
+                else:
+                    line = self.replace_str_index(line, i, ' ')
 
             if char in ['[', ']', '=']:
                 line = self.replace_str_index(line, i, ' ')
@@ -164,10 +266,15 @@ class DotReader:
             if char in ['\r', '\n']:
                 line = self.replace_str_index(line, i, '')
 
+        if line[-1] == ";":
+            line = line[:-1]
+
         tokens = line.split(" ")
 
         return tokens
 
+    # utility function which allows us to easily replace a character
+    # in a string at a given index
     @staticmethod
     def replace_str_index(text, index, replacement):
         return "{}{}{}".format(
@@ -176,11 +283,5 @@ class DotReader:
             text[index + 1:]
         )
 
-
-class Expression:
-    def __init__(self, op, const):
-        self.op = op
-        self.const = const
-
-    def apply(self, val):
-        return self.op(val, self.const)
+    def find_initial_node(self):
+        self.automaton.find_initial_node()

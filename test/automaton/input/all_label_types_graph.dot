@@ -1,0 +1,15 @@
+digraph G {
+    q1[label="node1"]
+    q2[xlabel="<=15", label="node2"]
+    q3[xlabel=">=20", label="node3"]
+    q4[xlabel=">=20", label="node4"]
+    q5[xlabel="<=10", label="node5"]
+    q0[style=invis,shape=point]
+    q0 -> q1[label="edge1"]
+    q1 -> q2[label="+0", label="edge2"]
+    q2 -> q3[label="+20", label="edge3"]
+    q1 -> q4[label="+0", label="edge4"]
+    q3 -> q1[label="+1", label="edge5"]
+    q4 -> q5[label="-20", label="edge6"]
+    q5 -> q1[label="+1", label="edge7"]
+}

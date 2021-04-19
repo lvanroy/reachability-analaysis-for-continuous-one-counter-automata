@@ -1,4 +1,5 @@
 digraph G {
+    	Q0[style=invis,shape=point]
 		Q0 -> Q1;
 		Q1 -> Q2
 		Q2 -- Q3
