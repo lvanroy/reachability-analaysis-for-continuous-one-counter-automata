@@ -8,7 +8,8 @@ from automaton.DotReader import DotReader
 
 
 class TestCreateAutomaton(unittest.TestCase):
-    def build_file_path(self, file):
+    @staticmethod
+    def build_file_path(file):
         base = os.path.dirname(__file__)
         return os.path.join(base, file)
 
@@ -288,3 +289,32 @@ class TestCreateAutomaton(unittest.TestCase):
         self.assertEqual("node3", str(automaton.get_node_label("q3")))
         self.assertEqual("node4", str(automaton.get_node_label("q4")))
         self.assertEqual("node5", str(automaton.get_node_label("q5")))
+
+    def test_multiple_edges_on_one_line(self):
+        file_name = self.build_file_path("input/multiple_edges_per_line.dot")
+        reader = DotReader(file_name)
+        automaton = reader.create_automaton()
+
+        self.assertEqual(automaton.get_nr_of_edges(), 3)
+        self.assertEqual(automaton.get_nr_of_nodes(), 4)
+
+        self.assertTrue(automaton.edge_exists("q0", "q1"))
+        self.assertTrue(automaton.edge_exists("q1", "q2"))
+        self.assertTrue(automaton.edge_exists("q2", "q3"))
+
+        self.assertEqual(automaton.get_edge_label("q0", "q1"), "e")
+        self.assertEqual(automaton.get_edge_label("q1", "q2"), "e")
+        self.assertEqual(automaton.get_edge_label("q2", "q3"), "e")
+
+    def test_multiple_nodes_on_one_line(self):
+        file_name = self.build_file_path("input/multiple_nodes_per_line.dot")
+        reader = DotReader(file_name)
+        automaton = reader.create_automaton()
+
+        self.assertEqual(automaton.get_nr_of_edges(), 1)
+        self.assertEqual(automaton.get_nr_of_nodes(), 4)
+
+        self.assertIsNone(automaton.get_node_label("q0"))
+        self.assertIsNone(automaton.get_node_label("q1"))
+        self.assertIsNone(automaton.get_node_label("q2"))
+        self.assertEqual(automaton.get_node_label("q3"), "e")

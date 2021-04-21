@@ -13,7 +13,6 @@ class DotReader:
         # keep track of the number of newly added nodes/edges
         # this is to provide an easy way to generate unique names
         self.new_node_counter = 0
-        self.new_edge_counter = 0
 
         self.ops = {
             "<=": operator.le,
@@ -35,8 +34,11 @@ class DotReader:
         with open(self.file_name, "r") as f:
             lines = f.readlines()
 
-            for line in lines:
+            for index in range(len(lines)):
+                line = lines[index]
                 tokens = self.generate_tokens(line)
+
+                tokens = list(filter(lambda x: x != "", tokens))
 
                 # start of a graph
                 if tokens[0] == "digraph":
@@ -48,28 +50,32 @@ class DotReader:
                 if tokens[0] == "}":
                     break
 
-                # read out edge information
-                node = tokens[0]
-                self.add_node(node)
+                nodes = list()
 
-                # track the nodes that were discovered within this line
-                nodes = [node]
-
-                # register if we are dealing with an edge
                 edge = False
 
-                for i in range(1, len(tokens), 2):
+                i = -1
+                while True:
+                    i += 1
+                    if i >= len(tokens):
+                        break
+
                     # register an edge definition
                     if tokens[i] in self.edge_types:
                         edge = True
-                        next_node = tokens[i + 1]
+
+                        i += 1
+                        next_node = tokens[i]
+
                         nodes.append(next_node)
                         self.add_node(next_node)
                         self.add_edge(node, next_node)
 
+                        node = next_node
+
                     # register label specification
-                    if tokens[i] in ["label", "xlabel"]:
-                        label = self.get_label(tokens[i + 1:])
+                    elif tokens[i] in ["label", "xlabel"]:
+                        label = self.get_label(tokens, i+1)
 
                         # ensure that we do not evaluate the label again
                         i += 1
@@ -122,34 +128,24 @@ class DotReader:
                             # not a condition we will add an edge and a secondary node
                             # we will attach the found expression to the found edge
                             if expression is not None and not is_condition:
-                                for j in range(len(nodes)):
-                                    start_node = nodes[j]
+                                in_between_node = "_{}".format(
+                                    self.new_node_counter
+                                )
 
-                                    in_between_node = "_{}".format(
-                                        self.new_node_counter
-                                    )
+                                self.new_node_counter += 1
 
-                                    in_between_edge = "_{}".format(
-                                        self.new_edge_counter
-                                    )
-
-                                    self.new_node_counter += 1
-                                    self.new_edge_counter += 1
-
-                                    self.add_node(in_between_node)
-                                    self.add_edge(start_node, in_between_node)
-                                    self.set_edge_operation(start_node, in_between_node, expression)
+                                self.add_node(in_between_node)
+                                self.add_edge(node, in_between_node)
+                                self.set_edge_operation(node, in_between_node, expression)
 
                             elif expression is not None:
-                                for el in nodes:
-                                    self.set_node_condition(el, expression)
+                                self.set_node_condition(node, expression)
 
                             else:
-                                for el in nodes:
-                                    self.set_node_label(el, label)
+                                self.set_node_label(node, label)
 
                     # register type specification
-                    if tokens[i] == "style":
+                    elif tokens[i] == "style":
                         style = tokens[i + 1]
 
                         # ensure that we do not evaluate the style token again
@@ -158,6 +154,21 @@ class DotReader:
                         if style == "invis":
                             for el in nodes:
                                 self.set_node_invisible(el)
+
+                    elif tokens[i] == "shape":
+                        # skip the actual shape attribute value
+                        i += 1
+
+                        continue
+
+                    # if none of the above we have found a node
+                    else:
+                        # read out edge information
+                        node = tokens[i]
+                        self.add_node(node)
+
+                        # track the nodes that were discovered within this line
+                        nodes.append(node)
 
         # find the initial node of the automaton
         # if multiple nodes can be considered a random
@@ -197,17 +208,17 @@ class DotReader:
     # -- LABEL OPERATIONS
 
     @staticmethod
-    def get_label(tokens):
-        delimiter = tokens[0][0]
-        label = tokens[0].replace(delimiter, "", 1)
+    def get_label(tokens, i):
+        delimiter = tokens[i][0]
+        label = tokens[i].replace(delimiter, "", 1)
         while True:
             nr_of_delimiters = label.count(delimiter)
             nr_of_escaped_delimiters = label.count("\\" + delimiter)
             if nr_of_delimiters - nr_of_escaped_delimiters == 1:
                 break
-            label += " {}".format(tokens.pop(1))
+            label += " {}".format(tokens.pop(i+1))
 
-        tokens[0] = delimiter + label
+        tokens[i] = delimiter + label
         return ''.join(label.rsplit(delimiter, 1))
 
     def convert_label_to_expression(self, label):

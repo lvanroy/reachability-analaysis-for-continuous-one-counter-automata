@@ -1,0 +1,5 @@
+digraph G {
+    q0 q1 q2 q3 [label = "e"]
+    q0[style=invis]
+    q0 -> q1
+}
