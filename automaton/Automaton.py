@@ -11,18 +11,19 @@ class Automaton:
 
     # -- NODES
 
-    def node_exists(self, node_name):
+    def node_exists(self, node_name) -> bool:
         return node_name in self.nodes
 
     def create_new_node(self, node_name):
         self.nodes[node_name] = Node(node_name)
+        return self
 
     # -- node labels
 
-    def add_label_to_node(self, node_name, label):
+    def add_label_to_node(self, node_name, label) -> None:
         self.nodes[node_name].set_label(label)
 
-    def get_node_label(self, node_name):
+    def get_node_label(self, node_name) -> bool:
         return self.nodes[node_name].get_label()
 
     # -- node conditions
@@ -41,6 +42,15 @@ class Automaton:
     def set_node_invisible(self, node_name):
         self.nodes[node_name].set_invisible()
 
+    def get_nodes(self):
+        return self.nodes
+
+    def is_initial(self, node):
+        return self.initial_node == node
+
+    def is_invisible(self, node):
+        return self.nodes[node].is_invisible()
+
     # -- EDGES
 
     def edge_exists(self, start, end):
@@ -53,11 +63,16 @@ class Automaton:
         if end not in self.edges[start]:
             self.edges[start][end] = Edge(start, end)
 
+        return self
+
     def get_nr_of_edges(self):
         nr_of_edges = 0
         for start in self.edges:
             nr_of_edges += len(self.edges[start])
         return nr_of_edges
+
+    def get_edges(self):
+        return self.edges
 
     # -- edge labels
 
@@ -93,5 +108,5 @@ class Automaton:
                   "node.")
             exit(-1)
 
-        potential_start_nodes = list(self.edges[invisible_node].values())
+        potential_start_nodes = list(self.edges[invisible_node].keys())
         self.initial_node = potential_start_nodes[0]
