@@ -1,4 +1,5 @@
 env
 venv
+virtenv
 .idea
 __pycache__

@@ -1,13 +1,18 @@
+from typing import Dict
+
 from automaton.Node import Node
 from automaton.Edge import Edge
+from automaton.Expression import Expression
 
 
 class Automaton:
-    def __init__(self, name):
+    def __init__(self, name, low, high):
         self.name = name            # the name of the automaton
         self.nodes = dict()         # a node name to node object mapping
         self.edges = dict()         # a start node name to edge object mapping
         self.initial_node = None    # the initial node of the automaton
+        self.lower_bound = low
+        self.upper_bound = high
 
     # -- NODES
 
@@ -31,29 +36,29 @@ class Automaton:
     def add_condition_to_node(self, node_name, condition):
         self.nodes[node_name].set_condition(condition)
 
-    def get_node_condition(self, node_name):
+    def get_node_condition(self, node_name) -> Expression:
         return self.nodes[node_name].get_condition()
 
     # -- node utility
 
-    def get_nr_of_nodes(self):
+    def get_nr_of_nodes(self) -> int:
         return len(self.nodes)
 
     def set_node_invisible(self, node_name):
         self.nodes[node_name].set_invisible()
 
-    def get_nodes(self):
+    def get_nodes(self) -> Dict[str, Node]:
         return self.nodes
 
-    def is_initial(self, node):
+    def is_initial(self, node) -> bool:
         return self.initial_node == node
 
-    def is_invisible(self, node):
+    def is_invisible(self, node) -> bool:
         return self.nodes[node].is_invisible()
 
     # -- EDGES
 
-    def edge_exists(self, start, end):
+    def edge_exists(self, start, end) -> bool:
         return start in self.edges and end in self.edges[start]
 
     def create_new_edge(self, start, end):
@@ -65,13 +70,13 @@ class Automaton:
 
         return self
 
-    def get_nr_of_edges(self):
+    def get_nr_of_edges(self) -> int:
         nr_of_edges = 0
         for start in self.edges:
             nr_of_edges += len(self.edges[start])
         return nr_of_edges
 
-    def get_edges(self):
+    def get_edges(self) -> Dict[str, Dict[str, Edge]]:
         return self.edges
 
     # -- edge labels
@@ -79,7 +84,7 @@ class Automaton:
     def add_label_to_edge(self, start, end, label):
         self.edges[start][end].set_label(label)
 
-    def get_edge_label(self, start, end):
+    def get_edge_label(self, start, end) -> str:
         return self.edges[start][end].get_label()
 
     # -- edge operations
@@ -87,7 +92,7 @@ class Automaton:
     def add_operation_to_edge(self, start, end, operation):
         self.edges[start][end].set_operation(operation)
 
-    def get_edge_operation(self, start, end):
+    def get_edge_operation(self, start, end) -> Expression:
         return self.edges[start][end].get_operation()
 
     # -- UTILITIES

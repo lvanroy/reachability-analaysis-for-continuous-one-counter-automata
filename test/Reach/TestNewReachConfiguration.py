@@ -6,12 +6,12 @@ from automaton.Automaton import Automaton
 
 class TestNewReachConfiguration(unittest.TestCase):
     def test_no_node_configuration(self):
-        manager = ReachManager(Automaton("test"))
+        manager = ReachManager(Automaton("test", 0, 10))
 
         self.assertIsNone(manager.get_reach("q0"))
 
     def test_one_node_configuration(self):
-        manager = ReachManager(Automaton("test"))
+        manager = ReachManager(Automaton("test", 0, 10))
 
         manager.add_state("q0", 0)
 
@@ -20,7 +20,7 @@ class TestNewReachConfiguration(unittest.TestCase):
         self.assertEqual([0], reach.get_reachable_set())
 
     def test_multi_node_configuration(self):
-        manager = ReachManager(Automaton("test"))
+        manager = ReachManager(Automaton("test", 0, 10))
 
         manager.add_state("q0", 0)
         manager.add_state("q1")
@@ -39,7 +39,7 @@ class TestNewReachConfiguration(unittest.TestCase):
         self.assertEqual(list(), reach.get_reachable_set())
 
     def test_automaton_configuration(self):
-        automaton = Automaton("test")
+        automaton = Automaton("test", 0, 10)
 
         automaton\
             .create_new_node("qi")\
@@ -67,7 +67,3 @@ class TestNewReachConfiguration(unittest.TestCase):
         reach = manager.get_reach("q2")
         self.assertIsNotNone(reach)
         self.assertEqual(list(), reach.get_reachable_set())
-
-
-
-

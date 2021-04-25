@@ -43,7 +43,7 @@ class DotReader:
                 # start of a graph
                 if tokens[0] == "digraph":
                     automaton_name = tokens[1].replace("{", "")
-                    self.automaton = Automaton(automaton_name)
+                    self.automaton = Automaton(automaton_name, float("-inf"), float("inf"))
                     continue
 
                 # end of a graph
@@ -238,7 +238,7 @@ class DotReader:
                     op += char
 
             # create an expression
-            f = Expression(self.ops[op], float(constant))
+            f = Expression(self.ops[op], int(constant))
 
             expressions.append(f)
 

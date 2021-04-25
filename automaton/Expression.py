@@ -14,8 +14,11 @@ class Expression:
             operator.sub: "-"
         }
 
-    def apply(self, val):
+    def apply(self, val) -> int:
         return self.op(val, self.const)
+
+    def get_value(self) -> int:
+        return self.const
 
     def __str__(self):
         return "{}{}".format(
