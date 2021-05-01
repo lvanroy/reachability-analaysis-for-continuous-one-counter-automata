@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 from automaton.Node import Node
 from automaton.Edge import Edge
@@ -76,8 +76,14 @@ class Automaton:
             nr_of_edges += len(self.edges[start])
         return nr_of_edges
 
-    def get_edges(self) -> Dict[str, Dict[str, Edge]]:
-        return self.edges
+    def get_proceeding_edges(self, end) -> Dict[str, List[Edge]]:
+        result: Dict[str, List[Edge]] = dict()
+        for start in self.edges:
+            if end in self.edges[start]:
+                if start not in result:
+                    result[start] = list()
+                result[start].append(self.edges[start][end])
+        return result
 
     # -- edge labels
 
@@ -115,3 +121,9 @@ class Automaton:
 
         potential_start_nodes = list(self.edges[invisible_node].keys())
         self.initial_node = potential_start_nodes[0]
+
+    def get_lower_bound(self) -> float:
+        return self.lower_bound
+
+    def get_upper_bound(self) -> float:
+        return self.upper_bound
