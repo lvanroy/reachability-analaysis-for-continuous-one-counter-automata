@@ -52,7 +52,7 @@ class Intervals:
 
                 # see if the current interval supersedes the uniend
                 if interval.get_high_bound() >= high:
-                    # if the uniend is stricly below the current interval
+                    # if the uniend is strictly below the current interval
                     # we insert the uniend directly below the current interval
                     if interval.get_low_bound() > high:
                         self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
@@ -66,6 +66,21 @@ class Intervals:
                     if interval.get_high_bound() == high:
                         if incl_high:
                             interval.set_incl_high(incl_high)
+
+                    # if the lower bound is overlapping
+                    # we need to assert whether or not either one is inclusive
+                    if interval.get_low_bound() == high:
+                        if incl_high or interval.is_low_inclusive():
+                            high = interval.get_high_bound()
+                            incl_high = interval.is_high_inclusive()
+                            self.intervals.pop(i)
+                            self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
+                            inserted = True
+                            break
+                        else:
+                            self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
+                            inserted = True
+                            break
 
                     # the uniend extends the current interval in the lower direction
                     # update the interval to reflect this
@@ -84,6 +99,17 @@ class Intervals:
 
                 # see if the uniend supersedes the current interval
                 elif interval.get_high_bound() < high:
+                    # verify whether or not the two intervals connect
+                    if interval.get_high_bound() == low:
+                        if interval.is_high_inclusive() or incl_low:
+                            low = interval.get_low_bound()
+                            incl_low = interval.is_low_inclusive()
+                        else:
+                            self.intervals.insert(i+1, Interval(low, incl_low, high, incl_high))
+                            inserted = True
+                            i += 1
+                            break
+
                     # if the current interval extends the uniend in the lower direction
                     # update the uniend to reflect this
                     if interval.get_low_bound() < low:
@@ -122,6 +148,8 @@ class Intervals:
             interval.rescale_reach(lower_bound, upper_bound)
 
     def is_expansion_of(self, other_intervals):
+        # check if the absolute size of the new interval is equal or larger
+        # than the other preceding interval
         difference = 0
         for interval in self.intervals:
             difference += interval.get_high_bound()
@@ -135,7 +163,53 @@ class Intervals:
             difference += 0.0001 * (not interval.is_low_inclusive())
             difference += 0.0001 * (not interval.is_high_inclusive())
 
-        return difference >= 0
+        is_expansion = difference >= 0
+
+        if not is_expansion:
+            return False
+
+        # ensure that the new interval contains the entire preceding interval
+        i = 0  # expanded intervals
+        j = 0  # preceding intervals
+        while True:
+            if j >= len(other_intervals.get_intervals()):
+                break
+            if i >= len(self.intervals):
+                break
+
+            old_interval = other_intervals.get_intervals()[j]
+            old_low_bound = old_interval.get_low_bound()
+            old_high_bound = old_interval.get_high_bound()
+            old_incl_low = old_interval.is_low_inclusive()
+            old_incl_high = old_interval.is_high_inclusive()
+
+            new_low_bound = self.intervals[i].get_low_bound()
+            new_high_bound = self.intervals[i].get_high_bound()
+            new_incl_low = self.intervals[i].is_low_inclusive()
+            new_incl_high = self.intervals[i].is_high_inclusive()
+
+            if old_low_bound > new_high_bound:
+                i += 1
+                continue
+
+            if new_low_bound < old_low_bound and new_high_bound > old_high_bound:
+                j += 1
+                continue
+
+            if new_low_bound == old_low_bound:
+                if not new_incl_low and old_incl_low:
+                    break
+
+            if new_high_bound == old_high_bound:
+                if not new_incl_high and old_incl_high:
+                    break
+
+            if old_low_bound < new_low_bound or old_high_bound > new_high_bound:
+                break
+
+            j += 1
+
+        return j == len(self.intervals)
 
     def __str__(self):
         output_str = ""

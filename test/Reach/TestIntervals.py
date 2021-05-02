@@ -86,6 +86,22 @@ class TestIntervals(unittest.TestCase):
         intervals.union(uniend)
         self.assertEqual("(-15, 16)", str(intervals))
 
+    def test_boundary_union(self):
+        intervals = Intervals(0, False, 10, True)
+        self.assertEqual("(0, 10]", str(intervals))
+
+        uniend = Intervals(10, False, 16, False)
+        intervals.union(uniend)
+        self.assertEqual("(0, 16)", str(intervals))
+
+        uniend = Intervals(16, False, 20, False)
+        intervals.union(uniend)
+        self.assertEqual("(0, 16) (16, 20)", str(intervals))
+
+        uniend = Intervals(-5, False, 0, False)
+        intervals.union(uniend)
+        self.assertEqual("(-5, 0) (0, 16) (16, 20)", str(intervals))
+
     def test_expansion(self):
         original = Intervals(0, True, 10, True)
         expansion = Intervals(-15, False, 16, False)
@@ -101,7 +117,7 @@ class TestIntervals(unittest.TestCase):
         is_expansion = expansion.is_expansion_of(original)
         self.assertFalse(is_expansion)
         is_expansion = original.is_expansion_of(expansion)
-        self.assertTrue(is_expansion)
+        self.assertFalse(is_expansion)
 
     def test_expansion_boundaries(self):
         original = Intervals(0, True, 10, True)
