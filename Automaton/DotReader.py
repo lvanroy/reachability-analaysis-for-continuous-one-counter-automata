@@ -1,5 +1,5 @@
-from automaton.Automaton import Automaton
-from automaton.Expression import Expression
+from Automaton.Automaton import Automaton
+from Automaton.Expression import Expression
 import operator
 import re
 
@@ -170,7 +170,7 @@ class DotReader:
                         # track the nodes that were discovered within this line
                         nodes.append(node)
 
-        # find the initial node of the automaton
+        # find the initial node of the Automaton
         # if multiple nodes can be considered a random
         # node will be selected
         # if no nodes can be considered as the initial node

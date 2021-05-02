@@ -1,4 +1,4 @@
-from automaton.Expression import Expression
+from Automaton.Expression import Expression
 
 
 class Edge:

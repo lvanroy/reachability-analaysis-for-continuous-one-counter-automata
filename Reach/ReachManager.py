@@ -1,9 +1,9 @@
 from Reach.Reach import Reach
 from Reach.Intervals import Intervals
 
-from automaton.Automaton import Automaton
+from Automaton.Automaton import Automaton
 
-from typing import Dict
+from typing import Dict, List
 
 
 class ReachManager:
@@ -21,8 +21,18 @@ class ReachManager:
         #   the dict will be updated at the end of every post operation, rather than during
         self.intervals: Dict[str, Dict[str, Intervals]] = dict()
 
+        # for each node we will track the number of consecutive times in which
+        # the interval expanded. It is tracked for each proceeding state of each state
+        #   interval expanded or remained the same size -> +1
+        #   interval decreased in size -> 0
+        self.expansions: Dict[List[str], int] = dict()
+
+        # keep track of the number of loops we have encountered
+        self.n = 0
+
         self.initialise_intervals()
         self.initialise_reaches()
+        self.initialize_expansions()
         self.update_intervals()
 
     def initialise_reaches(self):
@@ -38,11 +48,33 @@ class ReachManager:
         for node in self.automaton.get_nodes():
             self.intervals[node] = dict()
 
+    def initialize_expansions(self):
+        for loop in self.automaton.get_loops():
+            self.expansions[loop] = 0
+
     def update_intervals(self):
         for node in self.reaches:
             for node2 in self.reaches:
                 interval = self.reaches[node].get_reachable_set(node2)
                 self.intervals[node][node2] = interval
+
+    def update_expansions(self):
+        for loop in self.expansions:
+            expanded = True
+            for i in range(len(loop)):
+                current_node = loop[i]
+                prev_node = loop[i-1]
+                old_interval = self.intervals[current_node][prev_node]
+                new_interval = self.reaches[current_node].get_reachable_set(prev_node)
+                is_expansion = new_interval.is_expansion_of(old_interval)
+                if not is_expansion:
+                    expanded = False
+                    break
+
+            if expanded:
+                self.expansions[loop] += 1
+            else:
+                self.expansions[loop] = 0
 
     def add_state(self, state):
         nodes = self.automaton.get_nodes()
@@ -74,7 +106,7 @@ class ReachManager:
         else:
             return None
 
-    # For each state in the automaton
+    # For each state in the Automaton
     #   Update all their reaches
     def post_automaton(self):
         for state in self.reaches.keys():
@@ -82,7 +114,9 @@ class ReachManager:
                 continue
             self.post_state(state)
 
+        self.update_expansions()
         self.update_intervals()
+        self.n += 1
 
     def post_state(self, q):
         proceeding_edges = self.automaton.get_proceeding_edges(q)

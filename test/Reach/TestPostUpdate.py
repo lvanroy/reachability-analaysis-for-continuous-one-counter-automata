@@ -3,7 +3,7 @@ import os
 
 from Reach.ReachManager import ReachManager
 
-from automaton.DotReader import DotReader
+from Automaton.DotReader import DotReader
 
 
 class TestPostUpdate(unittest.TestCase):

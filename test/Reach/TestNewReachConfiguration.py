@@ -2,7 +2,7 @@ import unittest
 
 from Reach.ReachManager import ReachManager
 
-from automaton.Automaton import Automaton
+from Automaton.Automaton import Automaton
 
 
 class TestNewReachConfiguration(unittest.TestCase):

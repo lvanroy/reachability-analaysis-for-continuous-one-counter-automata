@@ -86,3 +86,44 @@ class TestIntervals(unittest.TestCase):
         intervals.union(uniend)
         self.assertEqual("(-15, 16)", str(intervals))
 
+    def test_expansion(self):
+        original = Intervals(0, True, 10, True)
+        expansion = Intervals(-15, False, 16, False)
+
+        is_expansion = expansion.is_expansion_of(original)
+        self.assertTrue(is_expansion)
+        is_expansion = original.is_expansion_of(expansion)
+        self.assertFalse(is_expansion)
+
+        original = Intervals(0, True, 10, True)
+        expansion = Intervals(-15, False, -10, False)
+
+        is_expansion = expansion.is_expansion_of(original)
+        self.assertFalse(is_expansion)
+        is_expansion = original.is_expansion_of(expansion)
+        self.assertTrue(is_expansion)
+
+    def test_expansion_boundaries(self):
+        original = Intervals(0, True, 10, True)
+        expansion = Intervals(0, True, 10, False)
+
+        is_expansion = expansion.is_expansion_of(original)
+        self.assertFalse(is_expansion)
+        is_expansion = original.is_expansion_of(expansion)
+        self.assertTrue(is_expansion)
+
+        original = Intervals(0, False, 10, True)
+        expansion = Intervals(0, False, 10, False)
+
+        is_expansion = expansion.is_expansion_of(original)
+        self.assertFalse(is_expansion)
+        is_expansion = original.is_expansion_of(expansion)
+        self.assertTrue(is_expansion)
+
+        original = Intervals(0, False, 10, False)
+        expansion = Intervals(0, False, 10, False)
+
+        is_expansion = expansion.is_expansion_of(original)
+        self.assertTrue(is_expansion)
+        is_expansion = original.is_expansion_of(expansion)
+        self.assertTrue(is_expansion)

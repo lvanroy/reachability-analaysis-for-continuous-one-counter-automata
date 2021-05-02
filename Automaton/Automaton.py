@@ -1,18 +1,23 @@
 from typing import Dict, List
 
-from automaton.Node import Node
-from automaton.Edge import Edge
-from automaton.Expression import Expression
+from Automaton.Node import Node
+from Automaton.Edge import Edge
+from Automaton.Expression import Expression
+from Automaton.LoopFinder import LoopFinder
 
 
 class Automaton:
     def __init__(self, name, low, high):
-        self.name = name            # the name of the automaton
-        self.nodes = dict()         # a node name to node object mapping
-        self.edges = dict()         # a start node name to edge object mapping
-        self.initial_node = None    # the initial node of the automaton
-        self.lower_bound = low
-        self.upper_bound = high
+        self.name = name             # the name of the Automaton
+        self.nodes = dict()          # a node name to node object mapping
+        self.edges = dict()          # a start node name to edge object mapping
+        self.initial_node = None     # the initial node of the Automaton
+        self.lower_bound = low       # the lower bound of the Automaton
+        self.upper_bound = high      # the upper bound of the Automaton
+        self.loops: List[List[str]]  # the loops within the Automaton
+
+        loop_finder = LoopFinder(self)
+        self.loops = loop_finder.get_loops()
 
     # -- NODES
 
@@ -85,6 +90,12 @@ class Automaton:
                 result[start].append(self.edges[start][end])
         return result
 
+    def get_outgoing_edges(self, start) -> Dict[str, Edge]:
+        if start in self.edges:
+            return self.edges[start]
+        else:
+            return dict()
+
     # -- edge labels
 
     def add_label_to_edge(self, start, end, label):
@@ -122,8 +133,14 @@ class Automaton:
         potential_start_nodes = list(self.edges[invisible_node].keys())
         self.initial_node = potential_start_nodes[0]
 
+    def get_initial_node(self):
+        return self.initial_node
+
     def get_lower_bound(self) -> float:
         return self.lower_bound
 
     def get_upper_bound(self) -> float:
         return self.upper_bound
+
+    def get_loops(self) -> List[List[str]]:
+        return self.loops

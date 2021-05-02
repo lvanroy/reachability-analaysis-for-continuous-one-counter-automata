@@ -121,6 +121,22 @@ class Intervals:
 
             interval.rescale_reach(lower_bound, upper_bound)
 
+    def is_expansion_of(self, other_intervals):
+        difference = 0
+        for interval in self.intervals:
+            difference += interval.get_high_bound()
+            difference -= interval.get_low_bound()
+            difference -= 0.0001 * (not interval.is_low_inclusive())
+            difference -= 0.0001 * (not interval.is_high_inclusive())
+
+        for interval in other_intervals.get_intervals():
+            difference -= interval.get_high_bound()
+            difference += interval.get_low_bound()
+            difference += 0.0001 * (not interval.is_low_inclusive())
+            difference += 0.0001 * (not interval.is_high_inclusive())
+
+        return difference >= 0
+
     def __str__(self):
         output_str = ""
 

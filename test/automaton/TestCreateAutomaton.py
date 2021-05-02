@@ -4,7 +4,7 @@ import os
 
 from contextlib import redirect_stdout
 
-from automaton.DotReader import DotReader
+from Automaton.DotReader import DotReader
 
 
 class TestCreateAutomaton(unittest.TestCase):
