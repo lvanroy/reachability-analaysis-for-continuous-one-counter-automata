@@ -177,6 +177,8 @@ class DotReader:
         # the program will exit
         self.find_initial_node()
 
+        self.automaton.initialize_loops()
+
         return self.automaton
 
     # -- NODE OPERATIONS

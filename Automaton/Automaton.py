@@ -8,16 +8,13 @@ from Automaton.LoopFinder import LoopFinder
 
 class Automaton:
     def __init__(self, name, low, high):
-        self.name = name             # the name of the Automaton
-        self.nodes = dict()          # a node name to node object mapping
-        self.edges = dict()          # a start node name to edge object mapping
-        self.initial_node = None     # the initial node of the Automaton
-        self.lower_bound = low       # the lower bound of the Automaton
-        self.upper_bound = high      # the upper bound of the Automaton
-        self.loops: List[List[str]]  # the loops within the Automaton
-
-        loop_finder = LoopFinder(self)
-        self.loops = loop_finder.get_loops()
+        self.name = name                      # the name of the Automaton
+        self.nodes = dict()                   # a node name to node object mapping
+        self.edges = dict()                   # a start node name to edge object mapping
+        self.initial_node = None              # the initial node of the Automaton
+        self.lower_bound = low                # the lower bound of the Automaton
+        self.upper_bound = high               # the upper bound of the Automaton
+        self.loops: List[List[str]] = list()  # the loops within the Automaton
 
     # -- NODES
 
@@ -141,6 +138,11 @@ class Automaton:
 
     def get_upper_bound(self) -> float:
         return self.upper_bound
+
+    def initialize_loops(self):
+        loop_finder = LoopFinder(self)
+        loop_finder.find_loops()
+        self.loops = loop_finder.get_loops()
 
     def get_loops(self) -> List[List[str]]:
         return self.loops

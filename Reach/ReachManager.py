@@ -3,7 +3,7 @@ from Reach.Intervals import Intervals
 
 from Automaton.Automaton import Automaton
 
-from typing import Dict, List
+from typing import Dict, Tuple
 
 
 class ReachManager:
@@ -25,7 +25,7 @@ class ReachManager:
         # the interval expanded. It is tracked for each proceeding state of each state
         #   interval expanded or remained the same size -> +1
         #   interval decreased in size -> 0
-        self.expansions: Dict[List[str], int] = dict()
+        self.expansions: Dict[Tuple[str, ...], int] = dict()
 
         # keep track of the number of loops we have encountered
         self.n = 0
@@ -50,7 +50,7 @@ class ReachManager:
 
     def initialize_expansions(self):
         for loop in self.automaton.get_loops():
-            self.expansions[loop] = 0
+            self.expansions[tuple(loop)] = 0
 
     def update_intervals(self):
         for node in self.reaches:
@@ -66,6 +66,11 @@ class ReachManager:
                 prev_node = loop[i-1]
                 old_interval = self.intervals[current_node][prev_node]
                 new_interval = self.reaches[current_node].get_reachable_set(prev_node)
+                if new_interval is None:
+                    expanded = False
+                    break
+                if old_interval is None:
+                    continue
                 is_expansion = new_interval.is_expansion_of(old_interval)
                 if not is_expansion:
                     expanded = False
@@ -105,6 +110,9 @@ class ReachManager:
             return self.reaches[state].get_reachable_set(origin)
         else:
             return None
+
+    def get_expansions(self) -> Dict[Tuple[str], int]:
+        return self.expansions
 
     # For each state in the Automaton
     #   Update all their reaches
