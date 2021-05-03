@@ -107,6 +107,7 @@ class DotReader:
                                     self.add_edge(prev_node, in_between_node)
                                     self.add_edge(in_between_node, next_node)
                                     self.set_node_condition(in_between_node, expression)
+                                    self.remove_edge(prev_node, next_node)
 
                                     prev_node = next_node
 

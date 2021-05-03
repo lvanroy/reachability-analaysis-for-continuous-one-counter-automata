@@ -31,7 +31,7 @@ class TestLoopFinder(unittest.TestCase):
 
         loops = loop_finder.get_loops()
         self.assertTrue(len(loops) == 1)
-        self.assertEqual(["s0", "s1", "s2"], loops[0])
+        self.assertEqual(["s0", "s1", "s2"], loops[0].get_nodes())
 
     def test_nested_loop(self):
         file_name = self.build_file_path("input/nested_loop.dot")
@@ -43,7 +43,18 @@ class TestLoopFinder(unittest.TestCase):
 
         loops = loop_finder.get_loops()
         self.assertTrue(len(loops) == 2)
-        self.assertEqual(["s0", "s1"], loops[0])
-        self.assertEqual(["s0", "s1", "s2"], loops[1])
+        self.assertEqual(["s0", "s1"], loops[0].get_nodes())
+        self.assertEqual(["s0", "s1", "s2"], loops[1].get_nodes())
 
+    def test_double_loop(self):
+        file_name = self.build_file_path("input/double_loop.dot")
+        reader = DotReader(file_name)
+        automaton = reader.create_automaton()
 
+        loop_finder = LoopFinder(automaton)
+        loop_finder.find_loops()
+
+        loops = loop_finder.get_loops()
+        self.assertTrue(len(loops) == 2)
+        self.assertEqual(["s0", "s1"], loops[0].get_nodes())
+        self.assertEqual(["s0", "s2"], loops[1].get_nodes())

@@ -19,3 +19,9 @@ class Edge:
 
     def get_operation(self) -> Expression:
         return self.operation
+
+    def __str__(self):
+        if self.label is not None:
+            return "{} -> {} -> {}".format(self.start, self.label, self.end)
+        else:
+            return "{} -> {}".format(self.start, self.end)

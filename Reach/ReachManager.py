@@ -27,7 +27,7 @@ class ReachManager:
         #   interval decreased in size -> 0
         self.expansions: Dict[Tuple[str, ...], int] = dict()
 
-        # keep track of the number of loops we have encountered
+        # keep track of the number of steps we have encountered
         self.n = 0
 
         self.initialise_intervals()
@@ -50,7 +50,7 @@ class ReachManager:
 
     def initialize_expansions(self):
         for loop in self.automaton.get_loops():
-            self.expansions[tuple(loop)] = 0
+            self.expansions[tuple(loop.get_nodes())] = 0
 
     def update_intervals(self):
         for node in self.reaches:
@@ -114,6 +114,14 @@ class ReachManager:
     def get_expansions(self) -> Dict[Tuple[str], int]:
         return self.expansions
 
+    def is_ready_for_acceleration(self, loop):
+        nr_of_nodes = len(self.automaton.get_nodes())
+        bound = nr_of_nodes * (4 * nr_of_nodes + 4)
+        return self.expansions[loop] >= bound
+
+    def accelerate(self, loop):
+        pass
+
     # For each state in the Automaton
     #   Update all their reaches
     def post_automaton(self):
@@ -121,6 +129,10 @@ class ReachManager:
             if self.automaton.is_invisible(state):
                 continue
             self.post_state(state)
+
+        for loop in self.expansions:
+            if self.is_ready_for_acceleration(loop):
+                self.accelerate(loop)
 
         self.update_expansions()
         self.update_intervals()

@@ -3,7 +3,7 @@ from typing import Dict, List
 from Automaton.Node import Node
 from Automaton.Edge import Edge
 from Automaton.Expression import Expression
-from Automaton.LoopFinder import LoopFinder
+from Automaton.LoopFinder import LoopFinder, Loop
 
 
 class Automaton:
@@ -14,7 +14,7 @@ class Automaton:
         self.initial_node = None              # the initial node of the Automaton
         self.lower_bound = low                # the lower bound of the Automaton
         self.upper_bound = high               # the upper bound of the Automaton
-        self.loops: List[List[str]] = list()  # the loops within the Automaton
+        self.loops: List[Loop] = list()  # the loops within the Automaton
 
     # -- NODES
 
@@ -144,5 +144,5 @@ class Automaton:
         loop_finder.find_loops()
         self.loops = loop_finder.get_loops()
 
-    def get_loops(self) -> List[List[str]]:
+    def get_loops(self) -> List[Loop]:
         return self.loops
