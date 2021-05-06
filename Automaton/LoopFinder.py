@@ -49,8 +49,17 @@ class LoopFinder:
 
         for loop in self.loops:
             low_bound = None
+            low_bound_node = None
+            low_preceding_node = None
+
             high_bound = None
-            for node in loop.get_nodes():
+            high_bound_node = None
+            high_preceding_node = None
+
+            nodes = loop.get_nodes()
+            for i in range(len(nodes)):
+                node = nodes[i]
+
                 condition = self.automaton.get_node_condition(node)
                 if condition is None:
                     continue
@@ -59,20 +68,38 @@ class LoopFinder:
                 if operation == ">=":
                     if low_bound is None or value < low_bound:
                         low_bound = value
+                        low_bound_node = node
+                        low_preceding_node = nodes[i-1]
 
                 if operation == "<=":
                     if high_bound is None or value > high_bound:
                         high_bound = value
+                        high_bound_node = node
+                        high_preceding_node = nodes[i-1]
 
             loop.set_min_bound(low_bound)
+            loop.set_min_bounded_node(low_bound_node)
+            loop.set_max_preceding_node(low_preceding_node)
+
             loop.set_max_bound(high_bound)
+            loop.set_max_bounded_node(high_bound_node)
+            loop.set_max_preceding_node(high_preceding_node)
 
 
 class Loop:
     def __init__(self, nodes):
         self.nodes: List[str] = nodes
+
         self.max_bound = None
+        self.max_bounded_node = None
+        self.max_preceding_node = None
+
         self.min_bound = None
+        self.min_bounded_node = None
+        self.min_preceding_node = None
+
+        self.expanded_up = False
+        self.expanded_down = False
 
     def get_nodes(self):
         return self.nodes
@@ -80,5 +107,54 @@ class Loop:
     def set_max_bound(self, max_bound):
         self.max_bound = max_bound
 
+    def get_max_bound(self):
+        return self.max_bound
+
+    def set_max_bounded_node(self, node):
+        self.max_bounded_node = node
+
+    def get_max_bounded_node(self):
+        return self.max_bounded_node
+
+    def set_max_preceding_node(self, node):
+        self.max_preceding_node = node
+
+    def get_max_preceding_node(self):
+        return self.max_preceding_node
+
     def set_min_bound(self, min_bound):
         self.min_bound = min_bound
+
+    def get_min_bound(self):
+        return self.min_bound
+
+    def set_min_bounded_node(self, node):
+        self.min_bounded_node = node
+
+    def get_min_bounded_node(self):
+        return self.min_bounded_node
+
+    def set_min_preceding_node(self, node):
+        self.min_preceding_node = node
+
+    def get_min_preceding_node(self):
+        return self.min_preceding_node
+
+    def register_upwards_expansion(self):
+        self.expanded_up = True
+
+    def has_upwards_expanded(self):
+        return self.expanded_up
+
+    def register_downwards_expansion(self):
+        self.expanded_down = True
+
+    def has_downwards_expanded(self):
+        return self.expanded_down
+
+    def __str__(self):
+        output = ""
+        for node in self.nodes:
+            output += "{}, ".format(node)
+        output += self.nodes[0]
+        return output

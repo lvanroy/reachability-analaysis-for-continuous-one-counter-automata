@@ -20,6 +20,15 @@ class Edge:
     def get_operation(self) -> Expression:
         return self.operation
 
+    def set_start(self, start):
+        self.start = start
+
+    def get_start(self) -> str:
+        return self.start
+
+    def get_end(self) -> str:
+        return self.end
+
     def __str__(self):
         if self.label is not None:
             return "{} -> {} -> {}".format(self.start, self.label, self.end)

@@ -14,7 +14,8 @@ class Automaton:
         self.initial_node = None              # the initial node of the Automaton
         self.lower_bound = low                # the lower bound of the Automaton
         self.upper_bound = high               # the upper bound of the Automaton
-        self.loops: List[Loop] = list()  # the loops within the Automaton
+        self.loops: List[Loop] = list()       # the loops within the Automaton
+        self.initial_value = 0                # the initial counter value
 
     # -- NODES
 
@@ -24,6 +25,10 @@ class Automaton:
     def create_new_node(self, node_name):
         self.nodes[node_name] = Node(node_name)
         return self
+
+    def get_node(self, node_name) -> Node:
+        if node_name in self.nodes:
+            return self.nodes[node_name]
 
     # -- node labels
 
@@ -72,6 +77,16 @@ class Automaton:
 
         return self
 
+    def move_edge_start(self, old_start, new_start):
+        if old_start in self.edges:
+            if new_start not in self.edges:
+                self.edges[new_start] = dict()
+            keys = list(self.edges[old_start].keys())
+            for end_node in keys:
+                edge = self.edges[old_start].pop(end_node)
+                self.edges[new_start][end_node] = edge
+                edge.set_start(new_start)
+
     def get_nr_of_edges(self) -> int:
         nr_of_edges = 0
         for start in self.edges:
@@ -92,6 +107,16 @@ class Automaton:
             return self.edges[start]
         else:
             return dict()
+
+    def get_edge(self, start, end) -> Edge:
+        if start in self.edges:
+            if end in self.edges[start]:
+                return self.edges[start][end]
+
+    def remove_edge(self, start, end):
+        if start in self.edges:
+            if end in self.edges[start]:
+                self.edges[start].pop(end)
 
     # -- edge labels
 
@@ -136,6 +161,12 @@ class Automaton:
     def get_lower_bound(self) -> float:
         return self.lower_bound
 
+    def set_lower_bound(self, bound):
+        self.lower_bound = bound
+
+    def set_upper_bound(self, bound):
+        self.upper_bound = bound
+
     def get_upper_bound(self) -> float:
         return self.upper_bound
 
@@ -146,3 +177,9 @@ class Automaton:
 
     def get_loops(self) -> List[Loop]:
         return self.loops
+
+    def set_initial_value(self, initial):
+        self.initial_value = initial
+
+    def get_initial_value(self):
+        return self.initial_value

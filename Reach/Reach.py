@@ -14,6 +14,12 @@ class Reach:
         else:
             self.reachable_set[state] = interval
 
+    def update_sup(self, state, sup):
+        self.reachable_set[state].update_sup(sup)
+
+    def update_inf(self, state, inf):
+        self.reachable_set[state].update_inf(inf)
+
     def rescale_reach(self, state, lower_bound, higher_bound):
         if state in self.reachable_set:
             self.reachable_set[state].rescale_reach(lower_bound, higher_bound)

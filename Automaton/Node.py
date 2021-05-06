@@ -23,6 +23,9 @@ class Node:
     def is_invisible(self):
         return self.invisible
 
+    def get_name(self):
+        return self.name
+
     def __str__(self):
         if self.condition is not None:
             return "{} [{}]".format(self.name, self.condition)

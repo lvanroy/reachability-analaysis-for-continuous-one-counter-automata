@@ -1,9 +1,11 @@
+from typing import Dict, Tuple
+from copy import deepcopy
+
 from Reach.Reach import Reach
 from Reach.Intervals import Intervals
 
 from Automaton.Automaton import Automaton
-
-from typing import Dict, Tuple
+from Automaton.LoopFinder import Loop
 
 
 class ReachManager:
@@ -12,6 +14,7 @@ class ReachManager:
 
         self.upper_bound = automaton.get_upper_bound()
         self.lower_bound = automaton.get_lower_bound()
+        self.initial_value = automaton.get_initial_value()
 
         # the reaches dict tracks the reachability data for each state
         #   this data will always be up to date and will be directly updated during the post
@@ -25,10 +28,16 @@ class ReachManager:
         # the interval expanded. It is tracked for each proceeding state of each state
         #   interval expanded or remained the same size -> +1
         #   interval decreased in size -> 0
-        self.expansions: Dict[Tuple[str, ...], int] = dict()
+        self.up_expansions: Dict[Loop, int] = dict()
+        self.down_expansions: Dict[Loop, int] = dict()
 
         # keep track of the number of steps we have encountered
         self.n = 0
+
+        # store whether or not we are finished evaluating
+        # this is equivalent to no updated reaches during
+        # an update automaton loop
+        self.finished = False
 
         self.initialise_intervals()
         self.initialise_reaches()
@@ -42,28 +51,34 @@ class ReachManager:
                 continue
             self.add_state(node)
             if self.automaton.is_initial(node):
-                self.add_interval(node, node, 0, True, 0, True)
+                self.add_interval(node, node, self.initial_value, True, self.initial_value, True)
 
     def initialise_intervals(self):
         for node in self.automaton.get_nodes():
+            if self.automaton.is_invisible(node):
+                continue
             self.intervals[node] = dict()
 
     def initialize_expansions(self):
         for loop in self.automaton.get_loops():
-            self.expansions[tuple(loop.get_nodes())] = 0
+            self.up_expansions[loop] = 0
+            self.down_expansions[loop] = 0
 
     def update_intervals(self):
         for node in self.reaches:
             for node2 in self.reaches:
                 interval = self.reaches[node].get_reachable_set(node2)
-                self.intervals[node][node2] = interval
+                self.intervals[node][node2] = deepcopy(interval)
 
     def update_expansions(self):
-        for loop in self.expansions:
+        for loop in self.automaton.get_loops():
             expanded = True
-            for i in range(len(loop)):
-                current_node = loop[i]
-                prev_node = loop[i-1]
+            expanded_up = True
+            expanded_down = True
+            loop_nodes = loop.get_nodes()
+            for i in range(len(loop_nodes)):
+                current_node = loop_nodes[i]
+                prev_node = loop_nodes[i-1]
                 old_interval = self.intervals[current_node][prev_node]
                 new_interval = self.reaches[current_node].get_reachable_set(prev_node)
                 if new_interval is None:
@@ -75,11 +90,23 @@ class ReachManager:
                 if not is_expansion:
                     expanded = False
                     break
+                if new_interval.get_inf() > old_interval.get_inf():
+                    expanded_down = False
+                if new_interval.get_inf() < old_interval.get_inf():
+                    loop.register_downwards_expansion()
+                if new_interval.get_sup() < old_interval.get_sup():
+                    expanded_up = False
+                if new_interval.get_sup() > old_interval.get_sup():
+                    loop.register_upwards_expansion()
 
             if expanded:
-                self.expansions[loop] += 1
+                if expanded_down:
+                    self.down_expansions[loop] += 1
+                if expanded_up:
+                    self.up_expansions[loop] += 1
             else:
-                self.expansions[loop] = 0
+                self.down_expansions[loop] = 0
+                self.up_expansions[loop] = 0
 
     def add_state(self, state):
         nodes = self.automaton.get_nodes()
@@ -91,6 +118,9 @@ class ReachManager:
         self.reaches[state] = Reach(node)
 
     def add_interval(self, state, origin, low, inc_low, high, inc_high):
+        if low > self.upper_bound or high < self.lower_bound:
+            return
+
         high = min(self.upper_bound, high)
         high = max(self.lower_bound, high)
 
@@ -111,38 +141,130 @@ class ReachManager:
         else:
             return None
 
-    def get_expansions(self) -> Dict[Tuple[str], int]:
-        return self.expansions
+    def get_down_expansions(self) -> Dict[Loop, int]:
+        return self.down_expansions
 
-    def is_ready_for_acceleration(self, loop):
+    def get_up_expansions(self) -> Dict[Loop, int]:
+        return self.up_expansions
+
+    def is_ready_for_down_acceleration(self, loop):
         nr_of_nodes = len(self.automaton.get_nodes())
         bound = nr_of_nodes * (4 * nr_of_nodes + 4)
-        return self.expansions[loop] >= bound
+        return self.down_expansions[loop] >= bound
 
-    def accelerate(self, loop):
-        pass
+    def is_ready_for_up_acceleration(self, loop):
+        nr_of_nodes = len(self.automaton.get_nodes())
+        bound = nr_of_nodes * (4 * nr_of_nodes + 4)
+        return self.up_expansions[loop] >= bound
+
+    def accelerate_up(self, loop):
+        if not loop.has_upwards_expanded():
+            return
+
+        max_bound = loop.get_max_bound()
+        max_bounded_node = loop.get_max_bounded_node()
+        max_preceding_node = loop.get_max_preceding_node()
+
+        if max_bound is None:
+            start = loop.get_nodes()[-1]
+            end = loop.get_nodes()[0]
+            reach = self.reaches[start]
+            reach.update_sup(end, float('inf'))
+            reach.rescale_reach(end, self.lower_bound, self.upper_bound)
+
+        else:
+            reach = self.reaches[max_bounded_node]
+            reach.update_sup(max_preceding_node, max_bound)
+            reach.rescale_reach(max_preceding_node, self.lower_bound, self.upper_bound)
+
+    def accelerate_down(self, loop):
+        if not loop.has_downwards_expanded():
+            return
+
+        min_bound = loop.get_max_bound()
+        min_bounded_node = loop.get_max_bounded_node()
+        min_preceding_node = loop.get_max_preceding_node()
+
+        if min_bound is None:
+            start = loop.get_nodes()[-1]
+            end = loop.get_nodes()[0]
+            reach = self.reaches[start]
+            reach.update_inf(end, float('inf'))
+            reach.rescale_reach(end, self.lower_bound, self.upper_bound)
+
+        else:
+            reach = self.reaches[min_bounded_node]
+            reach.update_inf(min_preceding_node, min_bound)
+            reach.rescale_reach(min_preceding_node, self.lower_bound, self.upper_bound)
+
+    def verify_end_condition(self):
+        for node in self.reaches:
+            reach = self.reaches[node]
+            for origin in self.automaton.get_nodes():
+                reachable_set = reach.get_reachable_set(origin)
+
+                # this means implies that there are no reaches from this origin node
+                if reachable_set is None:
+                    continue
+
+                previous_set = self.intervals[node][origin]
+
+                if reachable_set is None:
+                    continue
+
+                if previous_set is None:
+                    return
+
+                if not reachable_set.equals(previous_set):
+                    return
+
+        self.finished = True
+
+    def is_finished(self):
+        return self.finished
 
     # For each state in the Automaton
     #   Update all their reaches
-    def post_automaton(self):
+    def update_automaton(self):
         for state in self.reaches.keys():
             if self.automaton.is_invisible(state):
                 continue
-            self.post_state(state)
+            self.update_state(state)
 
-        for loop in self.expansions:
-            if self.is_ready_for_acceleration(loop):
-                self.accelerate(loop)
+        for loop in self.automaton.get_loops():
+            if self.is_ready_for_down_acceleration(loop):
+                self.accelerate_down(loop)
+            if self.is_ready_for_up_acceleration(loop):
+                self.accelerate_up(loop)
+
+        # print("=================")
+        # for key in self.up_expansions:
+        #     print("{}: {}".format(key, self.up_expansions[key]))
+        # print("=================")
+
+        self.verify_end_condition()
+        if self.finished:
+            return
+
+        # print(self.reaches["s1"].get_reachable_set("s0"))
+        # print(self.reaches["s0"].get_reachable_set("s1"))
+        # print(self.reaches["s1"].get_reachable_set("s2"))
+        # print(self.reaches["s2"].get_reachable_set("s1"))
+        #
+        # print("=================")
 
         self.update_expansions()
         self.update_intervals()
         self.n += 1
 
-    def post_state(self, q):
+    def update_state(self, q):
         proceeding_edges = self.automaton.get_proceeding_edges(q)
 
         for p in proceeding_edges:
             for edge in proceeding_edges[p]:
+                if self.automaton.is_invisible(p):
+                    continue
+
                 for sub_interval in self.intervals[p].values():
                     if sub_interval is None:
                         continue
@@ -160,3 +282,18 @@ class ReachManager:
                     self.reaches[q].update_reach(p, new_interval)
                     self.reaches[q].rescale_reach(p, self.lower_bound, self.upper_bound)
                     self.reaches[q].ensure_reach_in_node_bounds(p)
+
+    def is_reachable(self, node):
+        reach = self.reaches[node]
+
+        for node in self.automaton.get_nodes():
+            reachable_set = reach.get_reachable_set(node)
+            if reachable_set is None:
+                continue
+
+            if not reachable_set.is_empty():
+                return True
+
+        return False
+
+

@@ -151,19 +151,23 @@ class Intervals:
         # check if the absolute size of the new interval is equal or larger
         # than the other preceding interval
         difference = 0
+        bounds = 0
         for interval in self.intervals:
             difference += interval.get_high_bound()
             difference -= interval.get_low_bound()
-            difference -= 0.0001 * (not interval.is_low_inclusive())
-            difference -= 0.0001 * (not interval.is_high_inclusive())
+            bounds -= (not interval.is_low_inclusive())
+            bounds -= (not interval.is_high_inclusive())
 
         for interval in other_intervals.get_intervals():
             difference -= interval.get_high_bound()
             difference += interval.get_low_bound()
-            difference += 0.0001 * (not interval.is_low_inclusive())
-            difference += 0.0001 * (not interval.is_high_inclusive())
+            bounds += (not interval.is_low_inclusive())
+            bounds += (not interval.is_high_inclusive())
 
-        is_expansion = difference >= 0
+        if difference == 0:
+            is_expansion = bounds >= 0
+        else:
+            is_expansion = difference > 0
 
         if not is_expansion:
             return False
@@ -210,6 +214,42 @@ class Intervals:
             j += 1
 
         return j == len(self.intervals)
+
+    def equals(self, other_intervals):
+        if len(self.intervals) != len(other_intervals.get_intervals()):
+            return False
+
+        for i in range(len(self.intervals)):
+            interval = self.intervals[i]
+            other_interval = other_intervals.get_intervals()[i]
+            if not interval.equals(other_interval):
+                return False
+
+        return True
+
+    def get_inf(self):
+        return self.intervals[0].get_low_bound()
+
+    def update_inf(self, inf):
+        self.intervals[0].update_low(inf, True)
+
+    def get_sup(self):
+        return self.intervals[-1].get_high_bound()
+
+    def update_sup(self, sup):
+        self.intervals[-1].update_high(sup, True)
+
+    def is_empty(self):
+        is_empty = True
+
+        for interval in self.intervals:
+            if interval.get_low_bound() != interval.get_high_bound():
+                is_empty = False
+            elif interval.is_low_inclusive() or interval.is_high_inclusive():
+                is_empty = False
+
+        return is_empty or len(self.intervals) == 0
+
 
     def __str__(self):
         output_str = ""

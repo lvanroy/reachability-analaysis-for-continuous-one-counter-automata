@@ -36,11 +36,30 @@ class Interval:
         self.low = new_low
         self.incl_low = new_incl_low
 
+    def update_high(self, new_high, new_incl_high):
+        self.high = new_high
+        self.incl_high = new_incl_high
+
     def set_incl_low(self, new_incl_low):
         self.incl_low = new_incl_low
 
     def set_incl_high(self, new_incl_high):
         self.incl_high = new_incl_high
+
+    def equals(self, other_interval):
+        if self.low != other_interval.get_low_bound():
+            return False
+
+        if self.incl_low != other_interval.is_low_inclusive():
+            return False
+
+        if self.high != other_interval.get_high_bound():
+            return False
+
+        if self.incl_high != other_interval.is_high_inclusive():
+            return False
+
+        return True
 
     def __str__(self):
         output_str = ""

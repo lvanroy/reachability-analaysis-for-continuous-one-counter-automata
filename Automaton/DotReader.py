@@ -1,7 +1,12 @@
-from Automaton.Automaton import Automaton
-from Automaton.Expression import Expression
 import operator
 import re
+
+from typing import List
+
+from Automaton.Automaton import Automaton
+from Automaton.Expression import Expression
+from Automaton.Node import Node
+from Automaton.Edge import Edge
 
 
 class DotReader:
@@ -29,6 +34,12 @@ class DotReader:
         self.condition_matcher = re.compile(
             r'((<=|>=|=)[0-9]+\n?)+'
         )
+
+        # keep track of the nodes and edges with incorrect specifications
+        # these will be handled after the generation as to ensure that all
+        # outgoing and incoming edges are pointing to the new nodes
+        self.operational_nodes: List[Node] = list()
+        self.conditional_edges: List[Edge] = list()
 
     def create_automaton(self):
         with open(self.file_name, "r") as f:
@@ -98,16 +109,9 @@ class DotReader:
                                 for j in range(1, len(nodes)):
                                     next_node = nodes[j]
 
-                                    in_between_node = "_{}".format(
-                                        self.new_node_counter
-                                    )
-                                    self.new_node_counter += 1
-
-                                    self.add_node(in_between_node)
-                                    self.add_edge(prev_node, in_between_node)
-                                    self.add_edge(in_between_node, next_node)
-                                    self.set_node_condition(in_between_node, expression)
-                                    self.remove_edge(prev_node, next_node)
+                                    self.set_edge_operation(prev_node, next_node, expression)
+                                    edge = self.get_edge(prev_node, next_node)
+                                    self.conditional_edges.append(edge)
 
                                     prev_node = next_node
 
@@ -129,15 +133,9 @@ class DotReader:
                             # not a condition we will add an edge and a secondary node
                             # we will attach the found expression to the found edge
                             if expression is not None and not is_condition:
-                                in_between_node = "_{}".format(
-                                    self.new_node_counter
-                                )
-
-                                self.new_node_counter += 1
-
-                                self.add_node(in_between_node)
-                                self.add_edge(node, in_between_node)
-                                self.set_edge_operation(node, in_between_node, expression)
+                                self.set_node_condition(node, expression)
+                                node_obj = self.get_node(node)
+                                self.operational_nodes.append(node_obj)
 
                             elif expression is not None:
                                 self.set_node_condition(node, expression)
@@ -171,6 +169,35 @@ class DotReader:
                         # track the nodes that were discovered within this line
                         nodes.append(node)
 
+        for edge in self.conditional_edges:
+            prev_node = edge.get_start()
+            next_node = edge.get_end()
+            expression = edge.get_operation()
+            self.set_edge_operation(prev_node, next_node, None)
+
+            in_between_node = "_{}".format(self.new_node_counter)
+            self.new_node_counter += 1
+
+            self.add_node(in_between_node)
+            self.add_edge(prev_node, in_between_node)
+            self.add_edge(in_between_node, next_node)
+            self.set_node_condition(in_between_node, expression)
+            self.remove_edge(prev_node, next_node)
+
+        for node in self.operational_nodes:
+            node_name = node.get_name()
+            expression = node.get_condition()
+            self.set_node_condition(node_name, None)
+
+            in_between_node = "_{}".format(self.new_node_counter)
+            self.new_node_counter += 1
+
+            self.move_edge_start(node_name, in_between_node)
+
+            self.add_node(in_between_node)
+            self.add_edge(node_name, in_between_node)
+            self.set_edge_operation(node_name, in_between_node, expression)
+
         # find the initial node of the Automaton
         # if multiple nodes can be considered a random
         # node will be selected
@@ -197,6 +224,9 @@ class DotReader:
     def set_node_invisible(self, node):
         self.automaton.set_node_invisible(node)
 
+    def get_node(self, node_name) -> Node:
+        return self.automaton.get_node(node_name)
+
     # -- EDGE OPERATIONS
 
     def add_edge(self, node, next_node):
@@ -207,6 +237,15 @@ class DotReader:
 
     def set_edge_operation(self, prev_node, next_node, label):
         self.automaton.add_operation_to_edge(prev_node, next_node, label)
+
+    def remove_edge(self, start, end):
+        self.automaton.remove_edge(start, end)
+
+    def get_edge(self, start, end) -> Edge:
+        return self.automaton.get_edge(start, end)
+
+    def move_edge_start(self, old_start, new_start):
+        self.automaton.move_edge_start(old_start, new_start)
 
     # -- LABEL OPERATIONS
 

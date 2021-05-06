@@ -33,28 +33,28 @@ class TestPostUpdate(unittest.TestCase):
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", None)
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", None)
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", "(0, 1]")
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s2", "(0, 2]")
         self.assert_interval_matches("s2", "s1", "(0, 1]")
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s0", "[0, 0]")
@@ -69,7 +69,7 @@ class TestPostUpdate(unittest.TestCase):
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", None)
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s0", "s1", None)
@@ -77,7 +77,7 @@ class TestPostUpdate(unittest.TestCase):
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", None)
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s0", "s1", "(0, 2]")
@@ -85,7 +85,7 @@ class TestPostUpdate(unittest.TestCase):
         self.assert_interval_matches("s1", "s2", None)
         self.assert_interval_matches("s2", "s1", "(0, 2]")
 
-        self.manager.post_automaton()
+        self.manager.update_automaton()
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s0", "s1", "(0, 2]")

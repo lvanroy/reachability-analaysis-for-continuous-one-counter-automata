@@ -152,8 +152,8 @@ class TestIntervals(unittest.TestCase):
         is_expansion = original.is_expansion_of(expansion)
         self.assertTrue(is_expansion)
 
-        original = Intervals(0, False, 10, False)
-        expansion = Intervals(0, False, 10, False)
+        original = Intervals(0, False, 3, True)
+        expansion = Intervals(0, False, 3, True)
 
         is_expansion = expansion.is_expansion_of(original)
         self.assertTrue(is_expansion)
