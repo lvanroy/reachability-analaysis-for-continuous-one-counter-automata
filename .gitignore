@@ -3,3 +3,15 @@ venv
 virtenv
 .idea
 __pycache__
+**/*.aux
+**/*.toc
+**/*.gz
+**/*.snm
+**/*.out
+**/*.nav
+**/*.log
+**/*.aux
+**/*.xml
+**/*.log
+**/*.blg
+**/*.bbl
