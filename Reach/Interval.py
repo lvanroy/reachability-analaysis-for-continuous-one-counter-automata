@@ -26,11 +26,18 @@ class Interval:
     # def union(self, interval):
 
     def rescale_reach(self, lower_bound, upper_bound):
-        self.high = min(upper_bound, self.high)
-        self.high = max(lower_bound, self.high)
+        high = min(upper_bound, self.high)
+        high = max(lower_bound, high)
+        if high < self.high:
+            self.set_incl_high(True)
+            self.high = high
 
-        self.low = max(lower_bound, self.low)
-        self.low = min(upper_bound, self.low)
+        low = max(lower_bound, self.low)
+        low = min(upper_bound, low)
+
+        if low > self.low:
+            self.set_incl_low(True)
+            self.low = low
 
     def update_low(self, new_low, new_incl_low):
         self.low = new_low

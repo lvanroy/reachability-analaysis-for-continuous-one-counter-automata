@@ -18,6 +18,13 @@
 
 \usepackage{lscape}
 
+
+% ------------------------------------------------------------------------------
+% tikz
+% ------------------------------------------------------------------------------
+\usepackage{tikz}
+\usetikzlibrary{calc, arrows.meta, positioning, automata, shapes}
+
 \definecolor{mGreen}{rgb}{0,0.6,0}
 \definecolor{mGray}{rgb}{0.5,0.5,0.5}
 \definecolor{mPurple}{rgb}{0.58,0,0.82}
@@ -58,6 +65,11 @@ Reachability is a known problem that can heavily affect the efficiency of code. 
 
 \end{abstract}
 
+\newpage
+\tableofcontents
+
+\newpage
+
 \section{Introduction}
 A well known problem in writing code is the reachability of specific lines in said written code. It is often impossible to properly determine whether or not a line of code guarded by a conditional statement is going to be reachable in any possible execution of the code \cite{713323, 10.1145/1292316.1292319}. Unreachable code is never desired, but is an ever more pressing issue for energy restrained environments such as embedded computer systems \cite{embeddedefficiency}. In these systems, we want our execution to be as efficient as possible, and therefore avoid conditions that can never be satisfied or lines that can never be reached. to remedy this, a proper reachability prevention approach is needed.
 
@@ -84,25 +96,28 @@ The code can at most contain one counter and for the continuation of this paper 
 Other then the described code constraint, functions must also have a boolean return type, and integer parameter types (if any) to be converted into a counter automaton.
 
 \section{Motivation}
-Popular IDE's do already implement reachability analysis up to a certain degree. However, the dead code elimination they perform is shallow and limited. The code example given below was executed using Clion, one of the more commonly used C IDE's. While it is known that Clion can find dead code that directly results from code, it was not able to resolve this case, where the condition on line 4 can never evaluate to true. This is because the for statement on line 3 will always prevent line 4 from evaluating to true and yet Clion did not detect this. 
+Popular IDE's do already implement reachability analysis up to a certain degree. However, the dead code elimination they perform is shallow and limited. The code example given below was executed using Clion, one of 
 
 \begin{lstlisting}[style=CStyle]
 bool is_mul(int a, int b) {
-  int temp = b;
-  for(; temp > 0;){
-    if(temp == 0){
-      break;
-    }
-    temp -= a;
-  }
-  return temp == 0;
+int temp = b;
+for(; temp > 0;){
+if(temp == 0){
+break;
+}
+temp -= a;
+}
+return temp == 0;
 }
 
 int main() {
-  printf("5 is a multiple of 2: %d\n", is_mul(2, 5));
-  printf("6 is a multiple of 2: %d\n", is_mul(2, 6));
+printf("5 is a multiple of 2: %d\n", is_mul(2, 5));
+printf("6 is a multiple of 2: %d\n", is_mul(2, 6));
 }
 \end{lstlisting}
+
+\noindent
+the more commonly used C IDE's. While it is known that Clion can find dead code that directly results from code, it was not able to resolve this case, where the condition on line 4 can never evaluate to true. This is because the for statement on line 3 will always prevent line 4 from evaluating to true and yet Clion did not detect this. 
 
 The approach provided within this paper will be able to detect this, as it can simply evaluate the possible values with which line 5 can be reached, it will result that there is no sequence in which line 5 can be reached and we can therefore conclude that the condition surrounding this statement can never be satisfied.
 
@@ -145,18 +160,43 @@ The automata we will consider will be one-counter parametric automata. The set $
 
 There are a few exceptions to the above described states, some segments will have additional nodes to avoid confusion. These special nodes, and their meaning, will be further explained in their relevant sections inside Section \ref{sec:generation}, \nameref{sec:generation}.
 
-\section{Program}
-The program that will perform the conversion from c code to a one counter automaton, will do this in five steps.
+\section{C code to automata conversion}
 
-The first step, the initialization, will simply generate a parse tree, using the default c grammar, with the addition of the boolean type, and the removal of some gcc extensions.
+The approach given within this paper consists out of two major phases. The first phase will consist of the conversion from c code to one counter automata. The second phase will use the result from the first phase, and perform a reachability analysis on these generated automata.
 
-The second step, the context-free abstract syntax tree generation, will generate an abstract syntax tree without any regard for neighboring nodes.
+\begin{figure}[t]
+	\makebox[\textwidth][c]{
+		\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
+		\tikzstyle{center} = [draw=black, rectangle, text width=5.8em]
+		
+		\node[center]	at (0, 0) 		(q0) 	{Generate tree};
+		\node[center]	at (3.5, 0)		(q1)	{Context-free \\optimization};
+		\node[center]	at (7, 0)		(q2)	{Context-sensitive \\optimization};
+		\node[center]	at (10.5, 0)	(q3)	{Validate conditions};
+		\node[center]	at (14, 0)		(q4)	{Generate \\automaton};
+		\node[center]	at (14, -2)		(q5)	{Discard \\tree};
+		
+		\path[draw][->] 
+		(q0) edge (q1)
+		(q1) edge (q2)
+		(q2) edge (q3)
+		(q3) edge (q4)
+		(q3) edge (q5);
+		
+		\end{tikzpicture}
+	}
+\end{figure}
 
-In the third step, the abstract syntax tree generated in the previous step will be simplified in a context-sensitive manner, which means that the program will now look at all neighboring nodes. All redundant nodes will be removed, so that only important nodes with unambiguous meaning remain.
+The first phase starts with an initialization, which consists of the generation of a parse tree. This will be done using the default c grammar, with the extension of the boolean type as this is not within the c language by default.
 
-The fourth step will be an analysis on whether or not the resulting abstract syntax tree conforms to all earlier specified requirements and, if this is the case, we will continue with the fifth step, which will be the generation of the counter automaton.
+Using the resulting parse tree we will perform a simple context-free optimization where we will remove all needless nodes. This optimization will help us in the third step, where we will do a more in depth optimization cycle. This third cycle will perform optimizations based upon the context in which the nodes appear, and will try to simplify the syntax tree as much as possible. The resulting tree will contain no more potentially ambiguous nodes and all remaining nodes will be those relevant in the remainder of the evaluation.
 
-We will allow all counter operations that can directly be supported by the $op$ set described earlier. We will add assignment and inequality to this, as these can easily be represented as sequences of operations in the $op$ list. Along with these we will also need support for strict less than and greater than, which can also be implemented using the operations in the \textit{op} list. The full explanation on how this can be done, can be found in Section \ref{sec:generation}.
+The fourth step will be an analysis on whether or not the resulting abstract syntax tree conforms to all earlier specified requirements and, if this is the case, we will continue with the fifth step, which will be the generation of the counter automaton. For a function to conform it must have a boolean return value, the arguments (if any) must be of type integer and must never be mutated within the function body, there can only be one counter and the counter can only be mutated using the operations part of the $op$ set displayed below.
+\[
+op = \{+c, -c, +p, -p, \leq c, =c, \geq c, \leq p, =p, \geq p: c \in \mathbb{N}, p \in P\} \cup \{\epsilon\}
+\]
+
+The generation of the automaton within the fifth step is done by traversing the tree and converting every statement that is directly relevant to the counter modifications to their corresponding automaton labels.
 
 \subsection{Initialization}
 The program will start of by running the generator ANTLR compilation unit on the given c code. In case there are any issues regarding simple compilation rules, the program will exit with an error, indicating the issues in the code. For the remainder of the execution, the code is assumed to be correct, and there will be no regard for potential issues within the code.
@@ -168,9 +208,10 @@ First of all, the code uses the notion of a node stack. This node stack will be 
 
 The first loop will operate as a visitor, which will traverse the parse tree in a depth first manner. The first discovery of a node is done by calling the enter function corresponding to the type of node. As soon as all children of said node have been evaluated, the corresponding exit function will be called. 
 
-However, the creation of nodes is not the same in all situations, in some cases, a specific kind of node will be created, and in other cases a specific kind of node will not be created, depending on the rule used for the current node (which we can determine from the context of the current node). In order to know whether or not we need to pop a node from the node stack, we will allow the code to look at the top node in the stack, and evaluate the type of set node. No other context related evaluations will be allowed.
-
-\subsubsection{Context-free analysis assignmentExpression example}
+However, the creation of nodes is not the same in all situations, in some cases, a specific kind of node will be created, and in other cases a specific kind of node will not be created, depending on the rule used for the current node (which we can determine from the context of the current node). In order to know whether or not we need to pop a node from the node stack, we will allow the code to look at the top node in the stack, and evaluate the type of set node. No other context related evaluations will be allowed.\\
+\\
+\noindent
+\textbf{Context-free analysis assignmentExpression example}\\
 To look at a concrete example, consider the following rule in the grammar:
 \begin{align*}
 	&assignmentExpression\\
@@ -183,19 +224,18 @@ The rule for conditionalExpression needs to be there, as there is a chain of exp
 Since there is a chance no new node was added within the enter function, we will also be required to evaluate the top of the stack, to see whether or not the top of the stack is a node we need to pop, the code will do the same check that was done in the enter function of the traversal.
 
 \subsection{Context-sensitive abstract syntax tree reduction}
-There is still the need for 
- reductions. We will attempt to implement constant propagation and substitution, in which we compute constant expressions, and replace variables with known value, by their actual value. Furthermore we will try to rephrase expressions by expressions with the same meaning, so that all expressions, if possible, are in an acceptable format for the counter automaton.
+There is still the need for reductions. We will attempt to implement constant propagation and substitution, in which we compute constant expressions, and replace variables with known value, by their actual value. Furthermore we will try to rephrase expressions by expressions with the same meaning, so that all expressions, if possible, are in an acceptable format for the counter automaton.
 
 The context-sensitive reduction will also keep track of a lot of data about the variables in a symbol table. It will track whether or not variables are current initialized with a known value, values at certain points within the execution, it will track struct, union and enum definitions used for folding and so on. It will keep track of the kind of variables we have (eg. counters and parameters). All of this info will be used to enable the operations this cycle will perform, but will also be used in the validation loop.
 
 The program will do this by traversing the abstract syntax tree resulting from the previous step, but will now specifically go through the children of relevant expressions (eg. assignment expressions, additive expressions, ...).
 
-Important to note is that no folding/substitution will occur within loops, as these operations occur a variable number of times, and since there is no way of determining the exact number of times without evaluating the expression, this is considered too complex and often impossible, as counters may depend on parameters, which need to be chosen at evaluation time.
-
-
-\subsubsection{Context-sensitive reduction example: constant propagation}
+Important to note is that no folding/substitution will occur within loops, as these operations occur a variable number of times, and since there is no way of determining the exact number of times without evaluating the expression, this is considered too complex and often impossible, as counters may depend on parameters, which need to be chosen at evaluation time.\\
+\\
+\noindent
+\textbf{Context-sensitive reduction example: constant propagation}\\
 Another example of a needed reduction, is constant propagation and folding. It is possible that a code segment would initially be rejected, due to use of unwanted variables, while in essence, these variables are nothing but variable representations of results of constant expressions. Consider the code snippet below. It would initially be rejected, because the counter variable is initialized with a variable that is neither a constant nor a parameter.
-\newpage
+
 \begin{lstlisting}[style=CStyle]
 bool divide(int p, int n){
 	int variable = 5;
@@ -225,7 +265,7 @@ int variable = 25;
 int counter = 25;
 \end{lstlisting}
 
-The new code segment is acceptable, but we will not stop here, as the first line of the code is useless. It has no further benefit for the execution and will therefore be dropped. The final counter assignment will not be folded. Whenever a variable gets altered within a conditional scope, the variable is considered to be uncertain, and further folding based on earlier values will not be allowed. The final code segment is as described below, which is trivially accepted to be converted to a counter automaton.
+The new code segment is acceptable, but we will not stop here, as the first line of the code is useless. It has no further benefit for the execution and will therefore be dropped. The final counter assignment will not be folded. 
 
 \begin{lstlisting}[style=CStyle]
 bool divide(int p, int n){
@@ -241,13 +281,16 @@ bool divide(int p, int n){
 	return false;
 }
 \end{lstlisting}
-
-\subsubsection{Context-sensitive reduction example: addition folding}
+\noindent
+Whenever a variable gets altered within a conditional scope, the variable is considered to be uncertain, and further folding based on earlier values will not be allowed. The final code segment is as described above, which is trivially accepted to be converted to a counter automaton.\\
+\\
+\noindent
+\textbf{Context-sensitive reduction example: addition folding}\\
 As described earlier, we do allow additions and subtractions of the form $-x, +x, -n$ and $+n$, where $x \in P$ or $n \in \mathbb{N}$ with $P$ the set of parameters. Given that the formation, described in Figure \ref{fig:unfolded_addition} occurs in the automaton, we would technically not be allowed to accept this, as this is not directly in the specified format.
 
 \begin{figure}[h]
 	\centering
-	\includegraphics[width=0.8\linewidth]{unfolded_addition}
+	\includegraphics[width=0.7\linewidth]{unfolded_addition}
 	\caption{An Assignment Expression with counter addition as value.}
 	\label{fig:unfolded_addition}
 \end{figure}
@@ -352,9 +395,10 @@ Another aspect that will be tested, is the function definition. A function needs
 
 These conditions will all be tracked separately for each function. Whenever the status list is empty at the end of the evaluation, we assume that no issues occurred, and we say that the function satisfies the requirements, if there are any issues, no counter automaton will be generated, and the errors will be printed to the terminal.
 
-Important to note is that there is no regard for global statements. These are considered to be variable and undetermined. It could be that they can perfectly be used as counters, and that they will never be altered by other functions, but it is impossible to determine this efficiently. Therefore, a counter must be declared within the function scope.
-
-\subsubsection{validation example}
+Important to note is that there is no regard for global statements. These are considered to be variable and undetermined. It could be that they can perfectly be used as counters, and that they will never be altered by other functions, but it is impossible to determine this efficiently. Therefore, a counter must be declared within the function scope.\\
+\\
+\noindent
+\textbf{validation example}\\
 When we go back to the earlier mentioned segment of code. We obtain the automaton displayed in Figure \ref{fig:divide_cleaned}.
 
 \begin{lstlisting}[style=CStyle]

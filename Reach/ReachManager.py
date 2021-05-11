@@ -9,7 +9,7 @@ from Automaton.LoopFinder import Loop
 
 
 class ReachManager:
-    def __init__(self, automaton):
+    def __init__(self, automaton, debug=False):
         self.automaton: Automaton = automaton
 
         self.upper_bound = automaton.get_upper_bound()
@@ -38,6 +38,10 @@ class ReachManager:
         # this is equivalent to no updated reaches during
         # an update automaton loop
         self.finished = False
+
+        # track whether debug mode is on
+        # if so, output additional info for each loop
+        self.debug = False
 
         self.initialise_intervals()
         self.initialise_reaches()
@@ -226,6 +230,8 @@ class ReachManager:
     # For each state in the Automaton
     #   Update all their reaches
     def update_automaton(self):
+        if self.debug:
+            print(self)
         for state in self.reaches.keys():
             if self.automaton.is_invisible(state):
                 continue
@@ -237,21 +243,9 @@ class ReachManager:
             if self.is_ready_for_up_acceleration(loop):
                 self.accelerate_up(loop)
 
-        # print("=================")
-        # for key in self.up_expansions:
-        #     print("{}: {}".format(key, self.up_expansions[key]))
-        # print("=================")
-
         self.verify_end_condition()
         if self.finished:
             return
-
-        # print(self.reaches["s1"].get_reachable_set("s0"))
-        # print(self.reaches["s0"].get_reachable_set("s1"))
-        # print(self.reaches["s1"].get_reachable_set("s2"))
-        # print(self.reaches["s2"].get_reachable_set("s1"))
-        #
-        # print("=================")
 
         self.update_expansions()
         self.update_intervals()
@@ -269,6 +263,9 @@ class ReachManager:
                     if sub_interval is None:
                         continue
 
+                    if sub_interval.is_empty():
+                        continue
+
                     z = edge.get_operation().get_value()
                     if z > 0:
                         new_interval = Intervals(0, False, z, True)
@@ -282,6 +279,7 @@ class ReachManager:
                     self.reaches[q].update_reach(p, new_interval)
                     self.reaches[q].rescale_reach(p, self.lower_bound, self.upper_bound)
                     self.reaches[q].ensure_reach_in_node_bounds(p)
+                    self.reaches[q].remove_inconsistencies()
 
     def is_reachable(self, node):
         reach = self.reaches[node]
@@ -296,4 +294,14 @@ class ReachManager:
 
         return False
 
-
+    def __str__(self):
+        result = ""
+        for node in self.automaton.get_nodes():
+            if self.automaton.is_invisible(node):
+                continue
+            result += "For node {}:\n".format(node)
+            reach = self.intervals[node]
+            for preceding in reach:
+                if reach[preceding] is not None:
+                    result += "\t{}: {}\n".format(preceding, reach[preceding])
+        return result

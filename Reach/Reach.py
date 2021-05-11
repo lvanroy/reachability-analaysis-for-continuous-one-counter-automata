@@ -37,6 +37,13 @@ class Reach:
                     intervals = self.reachable_set[state]
                     intervals.rescale_reach(value, float("+inf"))
 
+    def remove_inconsistencies(self):
+        for node in self.reachable_set:
+            self.reachable_set[node].remove_inconsistencies()
+
+    def get_preceding_nodes(self):
+        return list(self.reachable_set.keys())
+
     def get_reachable_set(self, state):
         if state in self.reachable_set:
             return self.reachable_set[state]

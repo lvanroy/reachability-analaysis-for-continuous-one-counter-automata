@@ -250,6 +250,14 @@ class Intervals:
 
         return is_empty or len(self.intervals) == 0
 
+    def remove_inconsistencies(self):
+        for i in reversed(range(len(self.intervals))):
+            interval = self.intervals[i]
+            if interval.get_low_bound() == interval.get_high_bound():
+                if not interval.is_low_inclusive():
+                    self.intervals.pop(i)
+                if not interval.is_high_inclusive():
+                    self.intervals.pop(i)
 
     def __str__(self):
         output_str = ""
