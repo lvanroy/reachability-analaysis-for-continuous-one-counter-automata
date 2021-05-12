@@ -94,6 +94,11 @@ class ReachManager:
                 if not is_expansion:
                     expanded = False
                     break
+                if old_interval.is_empty():
+                    continue
+                if new_interval.is_empty():
+                    expanded = False
+                    break
                 if new_interval.get_inf() > old_interval.get_inf():
                     expanded_down = False
                 if new_interval.get_inf() < old_interval.get_inf():
@@ -230,8 +235,6 @@ class ReachManager:
     # For each state in the Automaton
     #   Update all their reaches
     def update_automaton(self):
-        if self.debug:
-            print(self)
         for state in self.reaches.keys():
             if self.automaton.is_invisible(state):
                 continue
@@ -242,6 +245,9 @@ class ReachManager:
                 self.accelerate_down(loop)
             if self.is_ready_for_up_acceleration(loop):
                 self.accelerate_up(loop)
+
+        if self.debug:
+            print(self)
 
         self.verify_end_condition()
         if self.finished:
@@ -266,7 +272,12 @@ class ReachManager:
                     if sub_interval.is_empty():
                         continue
 
-                    z = edge.get_operation().get_value()
+                    op = edge.get_operation()
+                    if op is not None:
+                        z = edge.get_operation().get_value()
+                    else:
+                        z = 0
+
                     if z > 0:
                         new_interval = Intervals(0, False, z, True)
                         new_interval.add(sub_interval)
@@ -293,6 +304,9 @@ class ReachManager:
                 return True
 
         return False
+
+    def set_debug(self, debug):
+        self.debug = debug
 
     def __str__(self):
         result = ""

@@ -1,0 +1,3 @@
+[submodule "c-dead-code-analyser"]
+	path = c-dead-code-analyser
+	url = https://github.com/lvanroy/c-dead-code-analyser.git

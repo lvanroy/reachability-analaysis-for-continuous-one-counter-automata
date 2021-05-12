@@ -36,6 +36,9 @@ class Reach:
                 elif operation == ">=" and state in self.reachable_set:
                     intervals = self.reachable_set[state]
                     intervals.rescale_reach(value, float("+inf"))
+                elif operation == "=" and state in self.reachable_set:
+                    intervals = self.reachable_set[state]
+                    intervals.rescale_reach(value, value)
 
     def remove_inconsistencies(self):
         for node in self.reachable_set:

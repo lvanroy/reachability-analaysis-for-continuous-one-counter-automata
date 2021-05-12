@@ -183,3 +183,16 @@ class Automaton:
 
     def get_initial_value(self):
         return self.initial_value
+
+    def __str__(self):
+        output = ""
+        for start in self.edges:
+            for edge in self.edges[start].values():
+                output += "{}\n".format(str(edge))
+
+        output += "\n"
+
+        for node in self.nodes.values():
+            output += "{}\n".format(str(node))
+
+        return output

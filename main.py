@@ -25,11 +25,16 @@ args = vars(parser.parse_args())
 reader = DotReader(args['input'])
 
 automaton = reader.create_automaton()
+
+if args['debug']:
+    print(automaton)
+
 automaton.set_lower_bound(args['low'])
 automaton.set_upper_bound(args['high'])
 automaton.set_initial_value(args['start'])
 
 manager = ReachManager(automaton)
+manager.set_debug(args['debug'])
 
 while not manager.is_finished():
     manager.update_automaton()
