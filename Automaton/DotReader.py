@@ -49,12 +49,19 @@ class DotReader:
                 line = lines[index]
                 tokens = self.generate_tokens(line)
 
+                if len(tokens) == 0:
+                    continue
+
                 tokens = list(filter(lambda x: x != "", tokens))
 
                 # start of a graph
                 if tokens[0] == "digraph":
                     automaton_name = tokens[1].replace("{", "")
                     self.automaton = Automaton(automaton_name, float("-inf"), float("inf"))
+                    continue
+
+                # if a rankdir is specified, just continue
+                if tokens[0] == "rankdir":
                     continue
 
                 # end of a graph
@@ -290,6 +297,9 @@ class DotReader:
 
     def generate_tokens(self, line):
         line = line.lstrip()
+
+        if line == "":
+            return list()
 
         # track whether or not we are defining a literal string
         string_def = False

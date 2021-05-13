@@ -5,7 +5,7 @@ digraph G {
     s2
     s3[xlabel=">=2"]
     s4
-    s5
+    s5[xlabel="+1"]
     si -> s0
     s0 -> s1[label = "+0"]
     s1 -> s2[label = "+1"]
