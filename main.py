@@ -9,6 +9,8 @@ from Automaton.DotReader import DotReader
 
 from Reach.ReachManager import ReachManager
 
+from Equations.EquationSolver import EquationSolver
+
 
 def grammar():
     cwd = os.path.abspath("c-dead-code-analyser")
@@ -73,7 +75,7 @@ def analyze_code():
     return generated_files
 
 
-def analyze_reachability(dot_file):
+def analyze_reachability_with_interval(dot_file):
     reader = DotReader(dot_file)
 
     automaton = reader.create_automaton()
@@ -121,6 +123,22 @@ def analyze_reachability(dot_file):
     return fully_reachable
 
 
+def analyze_reachability_with_formula(dot_file):
+    reader = DotReader(dot_file)
+
+    automaton = reader.create_automaton()
+
+    if args['debug']:
+        print(automaton)
+
+    automaton.set_lower_bound(args['low'])
+    automaton.set_upper_bound(args['high'])
+    automaton.set_initial_value(args['start'])
+
+    solver = EquationSolver(automaton)
+    solver.analyse()
+
+
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -144,8 +162,8 @@ parser = argparse.ArgumentParser(description='Process to analyze reachability of
 parser.add_argument('input', type=str, help='.dot file in case reach is the desired op, '
                                             'c file in case c code or full is the desired op, '
                                             'g4 file in case grammar is the desired op')
-parser.add_argument('--op', default='c-code', help="select the desired operation out of "
-                                                   "{'reachability', 'c-code', 'full', 'grammar'} (default c-code)")
+parser.add_argument('op', default='c-code', help="select the desired operation out of "
+                                                 "{'reachability', 'c-code', 'full', 'grammar'}")
 parser.add_argument('--node', type=str, help='Node under test, defaults to all nodes if '
                                              'no node is given')
 parser.add_argument('--start', type=int, default=0, help='The initial value for the '
@@ -161,13 +179,29 @@ parser.add_argument('--trace', type=str2bool, default=False, help='Enable debug 
                                                                   'implementation')
 parser.add_argument('--image', type=str2bool, default=False, help='Output all images representing the '
                                                                   'generated automata (default false)')
+parser.add_argument('--method', type=str, default='interval', help='Select the method desired to analyse ' \
+                                                                   'reachability. Method must be either ' \
+                                                                   'interval or formula (default interval)')
 args = vars(parser.parse_args())
+
+if args['op'] not in ['reachability', 'c-code', 'full', 'grammar']:
+    print("Error: op must be in ['reachability', 'c-code', "
+          "'full', 'grammar'] but is {}".format(args['op']))
+    exit(-1)
+
+if 'method' in args and args['method'] not in ['interval', 'formula']:
+    print("Error: method must be in ['interval', 'formula'] but is {}"
+          .format(args['method']))
+    exit(-1)
 
 if args['op'] == "grammar":
     grammar()
 
 if args['op'] == "reachability":
-    analyze_reachability(args["input"])
+    if args['method'] == 'interval':
+        analyze_reachability_with_interval(args["input"])
+    if args['method'] == 'formula':
+        analyze_reachability_with_formula(args["input"])
 
 if args['op'] == "c-code":
     analyze_code()
@@ -180,7 +214,7 @@ if args['op'] == "full":
     print()
     for file in files:
         print("Starting to analyze: {}".format(file))
-        result = analyze_reachability(file)
+        result = analyze_reachability_with_interval(file)
         reachabilities[file] = result
 
     for file_name in reachabilities:

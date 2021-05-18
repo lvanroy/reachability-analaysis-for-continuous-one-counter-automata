@@ -57,6 +57,13 @@ class Automaton:
     def get_nodes(self) -> Dict[str, Node]:
         return self.nodes
 
+    def get_visible_nodes(self) -> Dict[str, Node]:
+        result = dict()
+        for node in self.nodes:
+            if not self.nodes[node].is_invisible():
+                result[node] = self.nodes[node]
+        return result
+
     def is_initial(self, node) -> bool:
         return self.initial_node == node
 

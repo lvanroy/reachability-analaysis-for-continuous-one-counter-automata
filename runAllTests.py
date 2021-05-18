@@ -9,5 +9,12 @@ from test.Reach.TestPostUpdate import TestPostUpdate
 from test.Reach.TestLoopExpansions import TestLoopExpansion
 from test.Reach.TestFullScenarioWithoutParameters import TestFullScenarioWithoutParamters
 
+from test.Equations.TestUnion import TestUnion
+from test.Equations.TestAdd import TestAdd
+from test.Equations.TestIntersection import TestIntersection
+from test.Equations.TestOverlaps import TestOverlaps
+from test.Equations.TestNoOverlaps import TestNoOverlaps
+from test.Equations.TestFullAnalysis import TestFullAnalysis
+
 if __name__ == '__main__':
     unittest.main()
