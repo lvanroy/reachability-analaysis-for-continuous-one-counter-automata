@@ -8,8 +8,20 @@ class EquationSolver:
     def __init__(self, automaton, goal_node=None):
         self.automaton = automaton
         self.s = Solver()
-        self.nodes = list(self.automaton.get_visible_nodes().keys())
         self.auxiliary_counter = 0
+        self.nodes = list(self.automaton.get_visible_nodes().keys())
+
+        # store all the node conditions defined within the automaton
+        # this list will be used to trace the bounds implied by the
+        # different nodes. Each transition will have a corresponding
+        # condition representing the condition of its end node
+        # this will be stored in a consecutive list in pairs of two
+        # where the first entry will represent the constraint
+        # the second entry will represent the condition
+        # 0 -> >=, 1 -> <=, 2 -> =, 3 -> no condition
+        #   c0, v0, c1, v1, c2, v2, ...
+        self.conditions: List[int] = list()
+        self.selected_conditions: List[int] = list()
 
         # store all the edges defined within the automaton
         # this list will be used to provide the options
@@ -37,6 +49,9 @@ class EquationSolver:
 
         # mark the goal node if there is any
         self.goal_node = goal_node
+
+        self.addends = list()
+        self.y = list()
 
     def analyse(self):
         self.build_transitions()
@@ -76,6 +91,7 @@ class EquationSolver:
                 edge = self.automaton.get_edge(start, end)
                 start_index = self.get_index_of_node(edge.get_start())
                 end_index = self.get_index_of_node(edge.get_end())
+                end_condition = self.automaton.get_node_condition(end)
                 if edge.get_operation() is not None:
                     operation = edge.get_operation().get_value()
                 else:
@@ -87,20 +103,40 @@ class EquationSolver:
                 transition.append(end_index)
                 self.edges += transition
 
+                condition = list()
+                if end_condition is None:
+                    condition.append(3)
+                    condition.append(0)
+                else:
+                    operation = end_condition.get_operation()
+                    if operation == ">=":
+                        condition.append(0)
+                    elif operation == "<=":
+                        condition.append(1)
+                    else:
+                        condition.append(2)
+                    condition.append(end_condition.get_value())
+                self.conditions += condition
+
         # create a sequence of transitions
         # each transition is a sequence of integers
         # format: [p, z, q]
         for i in range(len(self.nodes)):
             transition = IntVector('t{}'.format(i), 3)
+            condition = IntVector('c{}'.format(i), 2)
             or_arguments = list()
             for j in range(0, len(self.edges), 3):
                 and_arguments = list()
                 for k in range(3):
                     and_arguments.append(transition[k] == self.edges[j + k])
+                for k in range(2):
+                    index = int(j / 3 * 2) + k
+                    and_arguments.append(condition[k] == self.conditions[index])
                 or_arguments.append(And(and_arguments))
             expr = Or(or_arguments)
             self.s.add(expr)
             self.transitions += transition
+            self.selected_conditions += condition
 
     def update_interval(self, it):
         z = self.transitions[it * 3 + 1]
@@ -116,6 +152,7 @@ class EquationSolver:
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         y = IntVector(vec_name, 4)
+        self.y += y
 
         or_arguments = list()
 
@@ -123,14 +160,15 @@ class EquationSolver:
         and_args = list()
         and_args.append(z > 0)
 
-        addend_name = 'a{}'.format(self.auxiliary_counter)
+        addend_name = 'addend{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         addend = IntVector(addend_name, 4)
+        self.addends += addend
 
         and_args += self.assign(addend, 0, z, 0, 1)
-        and_args += self.add_vec(start_interval,
-                                 addend,
-                                 y)
+        and_args.append(self.add_vec(start_interval,
+                                     addend,
+                                     y))
 
         or_arguments.append(And(and_args))
 
@@ -138,14 +176,16 @@ class EquationSolver:
         and_args.clear()
         and_args.append(z < 0)
 
-        addend_name = 'a{}'.format(self.auxiliary_counter)
+        addend_name = 'addend{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
-        addend = IntVector(addend_name, 4)
+        addend2 = IntVector(addend_name, 4)
+        self.addends += addend2
 
-        and_args += self.assign(addend, z, 0, 1, 0)
-        and_args += self.add_vec(start_interval,
-                                 addend,
-                                 y)
+        and_args += self.assign(addend2, z, 0, 1, 0)
+        and_args.append(self.add_vec(start_interval,
+                                     addend2,
+                                     y))
+
         or_arguments.append(And(and_args))
 
         # cover the case in which z = 0
@@ -163,49 +203,96 @@ class EquationSolver:
 
         # the sum is now stored in y
         # intersect this with the automaton bound
-        # if self.automaton.get_lower_bound() == -float('inf'):
-        #     incl_low = 2
-        #     low = 0
-        # else:
-        #     low = self.automaton.get_lower_bound()
-        #     incl_low = 0
-        #
-        # if self.automaton.get_upper_bound() == float('inf'):
-        #     incl_high = 2
-        #     high = 0
-        # else:
-        #     incl_high = 0
-        #     high = self.automaton.get_upper_bound()
-        # interval = self.generate_interval(
-        #     low,
-        #     high,
-        #     incl_low,
-        #     incl_high
-        # )
-        # y2 = self.generate_interval(0, 0, 0, 0)
-        # self.intersect_vec(y, interval, y2)
+        if self.automaton.get_lower_bound() == -float('inf'):
+            incl_low = 2
+            low = 0
+        else:
+            low = self.automaton.get_lower_bound()
+            incl_low = 0
+
+        if self.automaton.get_upper_bound() == float('inf'):
+            incl_high = 2
+            high = 0
+        else:
+            incl_high = 0
+            high = self.automaton.get_upper_bound()
+
+        vec_name = 'ab{}'.format(self.auxiliary_counter)
+        self.auxiliary_counter += 1
+        interval = IntVector(vec_name, 4)
+        self.s.add(And(self.assign(interval,
+                                   low, high,
+                                   incl_low, incl_high)))
+        self.y += interval
+
+        vec_name = 'y{}'.format(self.auxiliary_counter)
+        self.auxiliary_counter += 1
+        y2 = IntVector(vec_name, 4)
+        self.y += y2
+
+        self.intersect_vec(y, interval, y2)
 
         # the result is now stored in y2
         # intersect this with the node bound
-        # condition = self.automaton.get_node_condition(self.nodes[end])
-        # if condition is not None:
-        #     operation = condition.get_operation()
-        #     value = condition.get_value()
-        #
-        #     if operation == "<=":
-        #         interval = self.generate_interval(0, value, 2, 1)
-        #     elif operation == ">=":
-        #         interval = self.generate_interval(value, 0, 1, 2)
-        #     else:
-        #         interval = self.generate_interval(value, value, 1, 1)
-        #     y3 = self.generate_interval(0, 0, 0, 0)
-        #     self.intersect_vec(y2, interval, y3)
-        # else:
-        #     y3 = y2
+        condition = self.selected_conditions[it * 2]
+        value = self.selected_conditions[it * 2 + 1]
+
+        vec_name = 'ab{}'.format(self.auxiliary_counter)
+        self.auxiliary_counter += 1
+        interval = IntVector(vec_name, 4)
+        self.y += interval
+
+        or_arguments = list()
+        or_arguments.append(
+            And(
+                condition == 0,
+                And(self.assign(interval, value, 0, 1, 2))
+            )
+        )
+        or_arguments.append(
+            And(
+                condition == 1,
+                And(self.assign(interval, 0, value, 2, 1))
+            )
+        )
+        or_arguments.append(
+            And(
+                condition == 2,
+                And(self.assign(interval, value, value, 1, 1))
+            )
+        )
+        or_arguments.append(
+            And(
+                condition == 3,
+                And(self.assign(interval, 0, 0, 2, 2))
+            )
+        )
+
+        self.s.add(Or(or_arguments))
+
+        vec_name = 'y{}'.format(self.auxiliary_counter)
+        self.auxiliary_counter += 1
+        y3 = IntVector(vec_name, 4)
+        self.y += y3
+
+        self.intersect_vec(y2, interval, y3)
 
         # the result is now stored in y3
         # take the union with this vector and the original interval
-        self.union_vec(end_interval, y, target_interval)
+        self.union_vec(end_interval, y3, target_interval)
+
+        # ensure that the result is not empty
+        # if this is the case it means that the node is not reachable
+        self.s.add(
+            Or(
+                self.is_not_empty(
+                    target_interval[0],
+                    target_interval[1],
+                    target_interval[2],
+                    target_interval[3]
+                )
+            )
+        )
 
     def build_intervals(self):
         # initialise all intervals
@@ -213,13 +300,9 @@ class EquationSolver:
             for n in range(len(self.nodes)+1):
                 self.intervals += self.generate_interval(r, n)
 
-        # initialise the initial intervals
-        initial_node = self.automaton.get_initial_node()
-        initial_index = self.get_index_of_node(initial_node)
-
         for i in range(len(self.nodes)+1):
             base = i * 4
-            if i == initial_index:
+            if i == 0:
                 initial_value = self.automaton.get_initial_value()
                 self.s.add(self.intervals[base] == initial_value)
                 self.s.add(self.intervals[base + 1] == initial_value)
@@ -261,22 +344,74 @@ class EquationSolver:
     def add_vec(self, start, addend, target):
         arguments = list()
 
+        # if start is empty -> target = addend
+        and_arguments = list()
+        and_arguments += self.is_empty(
+            start[0],
+            start[1],
+            start[2],
+            start[3]
+        )
+        and_arguments += self.assign(
+            target,
+            addend[0],
+            addend[1],
+            addend[2],
+            addend[3]
+        )
+        arguments.append(And(and_arguments))
+
+        # if addend is empty -> target = start
+        and_arguments.clear()
+        and_arguments += self.is_empty(
+            addend[0],
+            addend[1],
+            addend[2],
+            addend[3]
+        )
+        and_arguments += self.assign(
+            target,
+            start[0],
+            start[1],
+            start[2],
+            start[3]
+        )
+        arguments.append(And(and_arguments))
+
         # add b and t
+        and_arguments.clear()
+        and_arguments.append(
+            Or(self.is_not_empty(
+                addend[0],
+                addend[1],
+                addend[2],
+                addend[3]
+            )
+        ))
+        and_arguments.append(
+            Or(self.is_not_empty(
+                start[0],
+                start[1],
+                start[2],
+                start[3]
+            )
+        ))
         for i in range(2):
             start_var = start[i]
             addend_var = addend[i]
             target_var = target[i]
-            arguments.append(target_var == start_var + addend_var)
+            and_arguments.append(target_var == start_var + addend_var)
 
         for i in range(2, 4):
             start_var = start[i]
             addend_var = addend[i]
             target_var = target[i]
-            arguments.append(
+            and_arguments.append(
                 self.generate_msum(start_var, addend_var, target_var)
             )
+        arguments.append(And(and_arguments))
 
-        return arguments
+        return Or(arguments)
 
     @staticmethod
     def generate_msum(x, y, z):
@@ -347,17 +482,33 @@ class EquationSolver:
 
         arguments = list()
 
-        # y_b inside x
+        # y full infinity
         and_arguments = list()
+        and_arguments.append(y_incl_low == 2)
+        and_arguments.append(y_incl_high == 2)
+
+        arguments.append(And(and_arguments))
+
+        # x full infinity
+        and_arguments = list()
+        and_arguments.append(x_incl_low == 2)
+        and_arguments.append(x_incl_high == 2)
+
+        arguments.append(And(and_arguments))
+
+        # y_b inside x
+        and_arguments.clear()
         and_arguments.append(x_b < y_b)
         and_arguments.append(y_b < x_t)
+        and_arguments.append(y_incl_low != 2)
 
         arguments.append(And(and_arguments))
 
         # y_t inside x
         and_arguments.clear()
         and_arguments.append(x_b < y_t)
-        and_arguments.append(y_b < x_t)
+        and_arguments.append(y_t < x_t)
+        and_arguments.append(y_incl_high != 2)
 
         arguments.append(And(and_arguments))
 
@@ -365,41 +516,43 @@ class EquationSolver:
         and_arguments.clear()
         and_arguments.append(y_b < x_b)
         and_arguments.append(x_b < y_t)
+        and_arguments.append(x_incl_low != 2)
 
         arguments.append(And(and_arguments))
 
         # x_t inside y
         and_arguments.clear()
         and_arguments.append(y_b < x_t)
-        and_arguments.append(x_b < y_t)
-
-        arguments.append(And(and_arguments))
-
-        # y stretches over x at infinity on the left side
-        and_arguments.clear()
-        and_arguments.append(x_b <= y_b)
-        and_arguments.append(y_incl_low == 2)
-
-        arguments.append(And(and_arguments))
-
-        # x stretches over y at infinity on the left side
-        and_arguments.clear()
-        and_arguments.append(y_b <= x_b)
-        and_arguments.append(x_incl_low == 2)
-
-        arguments.append(And(and_arguments))
-
-        # y stretches over x at infinity on the right side
-        and_arguments.clear()
-        and_arguments.append(x_t >= y_t)
-        and_arguments.append(y_incl_high == 2)
+        and_arguments.append(x_t < y_t)
+        and_arguments.append(x_incl_high != 2)
 
         arguments.append(And(and_arguments))
 
         # x stretches over y at infinity on the right side
         and_arguments.clear()
-        and_arguments.append(y_t >= x_t)
+        and_arguments.append(x_b <= y_b)
         and_arguments.append(x_incl_high == 2)
+
+        arguments.append(And(and_arguments))
+
+        # y stretches over x at infinity on the right side
+        and_arguments.clear()
+        and_arguments.append(y_b <= x_b)
+        and_arguments.append(y_incl_high == 2)
+
+        arguments.append(And(and_arguments))
+
+        # x stretches over y at infinity on the left side
+        and_arguments.clear()
+        and_arguments.append(x_t >= y_t)
+        and_arguments.append(x_incl_low == 2)
+
+        arguments.append(And(and_arguments))
+
+        # y stretches over x at infinity on the left side
+        and_arguments.clear()
+        and_arguments.append(y_t >= x_t)
+        and_arguments.append(y_incl_low == 2)
 
         arguments.append(And(and_arguments))
 
@@ -453,15 +606,13 @@ class EquationSolver:
         # x fully left of y
         and_arguments = list()
         and_arguments.append(x_t < y_b)
-        and_arguments.append(x_b < y_b)
-        and_arguments.append(y_incl_low != 2)
         and_arguments.append(x_incl_high != 2)
+        and_arguments.append(y_incl_low != 2)
         or_arguments.append(And(and_arguments))
 
         # x fully right of y
         and_arguments.clear()
-        and_arguments.append(x_b > y_t)
-        and_arguments.append(x_t > y_t)
+        and_arguments.append(y_t < x_b)
         and_arguments.append(y_incl_high != 2)
         and_arguments.append(x_incl_low != 2)
         or_arguments.append(And(and_arguments))
@@ -471,8 +622,17 @@ class EquationSolver:
         and_arguments.append(x_b == y_t)
 
         or_arguments2 = list()
-        or_arguments2.append(x_incl_low == 0)
-        or_arguments2.append(y_incl_high == 0)
+
+        and_arguments2 = list()
+        and_arguments2.append(x_incl_low == 0)
+        and_arguments2.append(y_incl_high != 2)
+        or_arguments2.append(And(and_arguments2))
+
+        and_arguments2.clear()
+        and_arguments2.append(x_incl_low != 2)
+        and_arguments2.append(y_incl_high == 0)
+        or_arguments2.append(And(and_arguments2))
+
         and_arguments.append(Or(or_arguments2))
 
         or_arguments.append(And(and_arguments))
@@ -482,8 +642,17 @@ class EquationSolver:
         and_arguments.append(x_t == y_b)
 
         or_arguments2.clear()
-        or_arguments2.append(x_incl_high == 0)
-        or_arguments2.append(y_incl_low == 0)
+
+        and_arguments2.clear()
+        and_arguments2.append(x_incl_high == 0)
+        and_arguments2.append(y_incl_low != 2)
+        or_arguments2.append(And(and_arguments2))
+
+        and_arguments2.clear()
+        and_arguments2.append(x_incl_high != 2)
+        and_arguments2.append(y_incl_low == 0)
+        or_arguments2.append(And(and_arguments2))
+
         and_arguments.append(Or(or_arguments2))
 
         or_arguments.append(And(and_arguments))
@@ -541,6 +710,8 @@ class EquationSolver:
                                                           operator.gt))
 
         arguments.append(And(and_arguments))
+
+        # STOP: x and y overlap
 
         self.s.add(Or(arguments))
 
@@ -642,39 +813,37 @@ class EquationSolver:
         or_arguments2.append(And(and_arguments3))
 
         # ===== STOP: yb == 2
-        # ===== START: yb != 2, xb == 1
+        # ===== START: xb == 0
 
         and_arguments3.clear()
-        and_arguments3.append(y_bound != 2)
-        and_arguments3.append(x_bound == 1)
-        and_arguments3.append(z_bound == 1)
+        and_arguments3.append(x_bound == 0)
+        and_arguments3.append(z_bound == 0)
         and_arguments3.append(z_val == x_val)
 
         or_arguments2.append(And(and_arguments3))
 
-        # ===== STOP: yb != 2, xb == 1
-        # ===== START: xb != 2, yb == 1
-
-        and_arguments3.clear()
-        and_arguments3.append(y_bound == 1)
-        and_arguments3.append(x_bound != 2)
-        and_arguments3.append(z_bound == 1)
-        and_arguments3.append(z_val == y_val)
-
-        or_arguments2.append(And(and_arguments3))
-
-        # ===== STOP: xb != 2, yb == 1
-        # ===== START: xb == 0, yb == 0
+        # ===== STOP: xb == 0
+        # ===== START: yb == 0
 
         and_arguments3.clear()
         and_arguments3.append(y_bound == 0)
-        and_arguments3.append(x_bound == 0)
         and_arguments3.append(z_bound == 0)
         and_arguments3.append(z_val == y_val)
 
         or_arguments2.append(And(and_arguments3))
 
-        # ===== STOP: xb == 0, yb == 0
+        # ===== STOP: yb == 0
+        # ===== START: xb == 1, yb == 1
+
+        and_arguments3.clear()
+        and_arguments3.append(y_bound == 1)
+        and_arguments3.append(x_bound == 1)
+        and_arguments3.append(z_bound == 1)
+        and_arguments3.append(z_val == y_val)
+
+        or_arguments2.append(And(and_arguments3))
+
+        # ===== STOP: xb == 1, yb == 1
 
         and_arguments2.append(Or(or_arguments2))
         or_arguments.append(And(and_arguments2))
@@ -701,17 +870,25 @@ class EquationSolver:
 
         or_arguments = list()
 
+        # START: x is empty
+
         empty_arguments = list()
         empty_arguments += self.is_empty(x_b, x_t, x_incl_low, x_incl_high)
         empty_arguments += self.assign(target, y_b, y_t, y_incl_low, y_incl_high)
 
         or_arguments.append(And(empty_arguments))
 
+        # STOP: x is empty
+        # START: y is empty
+
         empty_arguments.clear()
         empty_arguments += self.is_empty(y_b, y_t, y_incl_low, y_incl_high)
         empty_arguments += self.assign(target, x_b, x_t, x_incl_low, x_incl_high)
 
         or_arguments.append(And(empty_arguments))
+
+        # STOP: y is empty
+        # START: x and y is not empty
 
         not_empty_arguments = list()
         not_empty_arguments.append(
@@ -735,6 +912,8 @@ class EquationSolver:
 
         or_arguments.append(And(not_empty_arguments))
 
+        # STOP: x and y is not empty
+
         self.s.add(Or(or_arguments))
 
     @staticmethod
@@ -748,9 +927,9 @@ class EquationSolver:
         # START: xb == 2
 
         and_arguments = list()
-        and_arguments.append(x_bound == IntVal(2))
-        and_arguments.append(z_bound == IntVal(2))
-        and_arguments.append(z_val == IntVal(0))
+        and_arguments.append(x_bound == 2)
+        and_arguments.append(z_bound == 2)
+        and_arguments.append(z_val == 0)
 
         or_arguments.append(And(and_arguments))
 
@@ -765,34 +944,42 @@ class EquationSolver:
         or_arguments.append(And(and_arguments))
 
         # STOP: yb == 2
-        # START: xv op yv
+        # START: yb != 2, xb != 2
+
+        outer_and = list()
+        outer_and.append(x_bound != 2)
+        outer_and.append(y_bound != 2)
+
+        outer_or = list()
+
+        # ===== START: xv op yv
 
         and_arguments.clear()
         and_arguments.append(operation(x_val, y_val))
         and_arguments.append(z_bound == x_bound)
         and_arguments.append(z_val == x_val)
 
-        or_arguments.append(And(and_arguments))
+        outer_or.append(And(and_arguments))
 
-        # STOP: xv op yv
-        # START: yv op xv
+        # ===== STOP: xv op yv
+        # ===== START: yv op xv
 
         and_arguments.clear()
         and_arguments.append(operation(y_val, x_val))
         and_arguments.append(z_bound == y_bound)
         and_arguments.append(z_val == y_val)
 
-        or_arguments.append(And(and_arguments))
+        outer_or.append(And(and_arguments))
 
-        # STOP: yv op xv
-        # START: yv == xv
+        # ===== STOP: yv op xv
+        # ===== START: yv == xv
 
         and_arguments.clear()
         and_arguments.append(y_val == x_val)
 
         or_arguments2 = list()
 
-        # ===== START: yb == 1 or xb = 1
+        # ========== START: yb == 1 or xb = 1
 
         and_arguments2 = list()
 
@@ -807,8 +994,8 @@ class EquationSolver:
 
         or_arguments2.append(And(and_arguments2))
 
-        # ===== STOP: yb == 1 or xb == 1
-        # ===== START: yb == 0 and xb == 0
+        # ========== STOP: yb == 1 or xb == 1
+        # ========== START: yb == 0 and xb == 0
 
         and_arguments2.clear()
 
@@ -819,12 +1006,17 @@ class EquationSolver:
 
         or_arguments2.append(And(and_arguments2))
 
-        # ===== STOP: yb == 0 and xb == 0
+        # ========== STOP: yb == 0 and xb == 0
 
         and_arguments.append(Or(or_arguments2))
-        or_arguments.append(And(and_arguments))
+        outer_or.append(And(and_arguments))
 
-        # STOP: xv == yv
+        # ===== STOP: xv == yv
+
+        outer_and.append(Or(outer_or))
+        or_arguments.append(And(outer_and))
+
+        # STOP: yb != 2, xb != 2
 
         return Or(or_arguments)
 

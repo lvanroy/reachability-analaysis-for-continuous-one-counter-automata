@@ -109,6 +109,33 @@ class TestOverlaps(unittest.TestCase):
 
         self.assertEqual(self.solver.check(), sat)
 
+    def test_overlap_double_infinity_high_zero(self):
+        self.assign_to_vec(self.vector1, -2, 6, 0, 0)
+        self.assign_to_vec(self.vector2, 0, 0, 2, 2)
+
+        self.solver.add(self.eq_solver.overlaps(self.vector1,
+                                                self.vector2))
+
+        self.assertEqual(self.solver.check(), sat)
+
+    def test_overlap_double_infinity_low_zero(self):
+        self.assign_to_vec(self.vector1, -4, 2, 0, 0)
+        self.assign_to_vec(self.vector2, -6, -4, 2, 2)
+
+        self.solver.add(self.eq_solver.overlaps(self.vector1,
+                                                self.vector2))
+
+        self.assertEqual(self.solver.check(), sat)
+
+    def test_overlap_lower_match_not_included(self):
+        self.assign_to_vec(self.vector1, 0, 1, 0, 1)
+        self.assign_to_vec(self.vector2, 0, 0, 1, 2)
+
+        self.solver.add(self.eq_solver.overlaps(self.vector1,
+                                                self.vector2))
+
+        self.assertEqual(self.solver.check(), sat)
+
     def test_overlap_infinity_bound_lower_no_overlap(self):
         self.assign_to_vec(self.vector1, 4, 6, 0, 1)
         self.assign_to_vec(self.vector2, 0, 3, 2, 0)
@@ -121,6 +148,24 @@ class TestOverlaps(unittest.TestCase):
     def test_overlap_infinity_bound_upper_no_overlap(self):
         self.assign_to_vec(self.vector1, 4, 6, 1, 2)
         self.assign_to_vec(self.vector2, 0, 3, 1, 0)
+
+        self.solver.add(self.eq_solver.overlaps(self.vector1,
+                                                self.vector2))
+
+        self.assertEqual(self.solver.check(), unsat)
+
+    def test_overlap_ignore_infinity_ignore_lower_bound(self):
+        self.assign_to_vec(self.vector1, -1, 1, 0, 0)
+        self.assign_to_vec(self.vector2, 0, -5, 2, 1)
+
+        self.solver.add(self.eq_solver.overlaps(self.vector1,
+                                                self.vector2))
+
+        self.assertEqual(self.solver.check(), unsat)
+
+    def test_overlap_ignore_infinity_ignore_upper_bound(self):
+        self.assign_to_vec(self.vector1, -1, 1, 0, 0)
+        self.assign_to_vec(self.vector2, 10, 0, 1, 2)
 
         self.solver.add(self.eq_solver.overlaps(self.vector1,
                                                 self.vector2))

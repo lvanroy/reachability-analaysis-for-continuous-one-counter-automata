@@ -26,7 +26,7 @@ class TestUnion(unittest.TestCase):
         self.solver.add(vector[3] == it)
 
     def verify_result(self, t, b, ib, it):
-        self.solver.check()
+        self.assertEqual(self.solver.check(), sat)
         m = self.solver.model()
         zt = m[self.result[0]].as_long()
         zb = m[self.result[1]].as_long()
@@ -37,32 +37,83 @@ class TestUnion(unittest.TestCase):
         self.assertEqual(zl, ib)
         self.assertEqual(zu, it)
 
-    def test_basic_intersect(self):
-        self.assign_to_vec(self.vector1, 0, 3, 1, 1)
-        self.assign_to_vec(self.vector2, 3, 6, 1, 1)
+    def test_union_x_in_y(self):
+        self.assign_to_vec(self.vector1, 0, 3, 0, 0)
+        self.assign_to_vec(self.vector2, -3, 6, 0, 0)
 
-        self.eq_solver.intersect_vec(self.vector1,
-                                     self.vector2,
-                                     self.result)
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
 
-        self.verify_result(3, 3, 1, 1)
+        self.verify_result(-3, 6, 0, 0)
 
-    def test_no_intersect(self):
-        self.assign_to_vec(self.vector1, 0, 3, 1, 1)
-        self.assign_to_vec(self.vector2, 4, 6, 1, 1)
+    def test_union_y_in_x(self):
+        self.assign_to_vec(self.vector1, 0, 10, 0, 1)
+        self.assign_to_vec(self.vector2, 3, 6, 1, 0)
 
-        self.eq_solver.intersect_vec(self.vector1,
-                                     self.vector2,
-                                     self.result)
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
 
-        self.verify_result(0, 0, 0, 0)
+        self.verify_result(0, 10, 0, 1)
 
-    def test_no_intersect_on_bound(self):
-        self.assign_to_vec(self.vector1, 0, 3, 1, 0)
-        self.assign_to_vec(self.vector2, 3, 6, 0, 1)
+    def test_union_infinity_bound_lower(self):
+        self.assign_to_vec(self.vector1, 0, 10, 0, 1)
+        self.assign_to_vec(self.vector2, 3, 6, 2, 0)
 
-        self.eq_solver.intersect_vec(self.vector1,
-                                     self.vector2,
-                                     self.result)
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
 
-        self.verify_result(0, 0, 0, 0)
+        self.verify_result(0, 10, 2, 1)
+
+    def test_union_infinity_bound_upper(self):
+        self.assign_to_vec(self.vector1, 0, 10, 0, 2)
+        self.assign_to_vec(self.vector2, 3, 6, 0, 0)
+
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
+
+        self.verify_result(0, 0, 0, 2)
+
+    def test_union_x_empty(self):
+        self.assign_to_vec(self.vector1, 0, 0, 0, 0)
+        self.assign_to_vec(self.vector2, 3, 6, 0, 2)
+
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
+
+        self.verify_result(3, 6, 0, 2)
+
+    def test_union_y_empty(self):
+        self.assign_to_vec(self.vector1, 3, 6, 0, 2)
+        self.assign_to_vec(self.vector2, 0, 0, 0, 0)
+
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
+
+        self.verify_result(3, 6, 0, 2)
+
+    def test_union_x_shared_upper_bound(self):
+        self.assign_to_vec(self.vector1, 3, 6, 0, 1)
+        self.assign_to_vec(self.vector2, 6, 9, 0, 1)
+
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
+
+        self.verify_result(3, 9, 0, 1)
+
+    def test_union_x_shared_lower_bound(self):
+        self.assign_to_vec(self.vector1, 3, 6, 1, 1)
+        self.assign_to_vec(self.vector2, 0, 3, 0, 1)
+
+        self.eq_solver.union_vec(self.vector1,
+                                 self.vector2,
+                                 self.result)
+
+        self.verify_result(0, 6, 0, 1)
+

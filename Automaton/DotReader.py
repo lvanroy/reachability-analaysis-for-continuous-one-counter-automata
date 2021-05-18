@@ -32,7 +32,7 @@ class DotReader:
         )
 
         self.condition_matcher = re.compile(
-            r'((<=|>=|=)[0-9]+\n?)+'
+            r'((<=|>=|=)[+-]?[0-9]+\n?)+'
         )
 
         # keep track of the nodes and edges with incorrect specifications
@@ -281,7 +281,7 @@ class DotReader:
             # iterate over the different characters within the label
             # differentiate between constant and expression
             for char in sub_expr:
-                if char.isnumeric():
+                if char.isnumeric() or (char in ["+", "-"] and op != ""):
                     constant += char
                 else:
                     op += char

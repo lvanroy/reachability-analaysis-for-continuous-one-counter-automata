@@ -42,9 +42,9 @@ class TestAdd(unittest.TestCase):
         self.assign_to_vec(self.vector2, 0, 0, 1, 1)
 
         self.solver.add(
-            And(self.eq_solver.add_vec(self.vector1,
-                                       self.vector2,
-                                       self.result)))
+            self.eq_solver.add_vec(self.vector1,
+                                   self.vector2,
+                                   self.result))
 
         self.verify_result(0, 0, 1, 1)
 
@@ -53,8 +53,42 @@ class TestAdd(unittest.TestCase):
         self.assign_to_vec(self.vector2, 0, 1, 0, 1)
 
         self.solver.add(
-            And(self.eq_solver.add_vec(self.vector1,
-                                       self.vector2,
-                                       self.result)))
+            self.eq_solver.add_vec(self.vector1,
+                                   self.vector2,
+                                   self.result))
 
         self.verify_result(0, 1, 0, 1)
+
+    def test_add_empty_x(self):
+        self.assign_to_vec(self.vector1, 0, 0, 0, 0)
+        self.assign_to_vec(self.vector2, 0, 1, 0, 1)
+
+        self.solver.add(
+            self.eq_solver.add_vec(self.vector1,
+                                   self.vector2,
+                                   self.result))
+
+        self.verify_result(0, 1, 0, 1)
+
+    def test_add_empty_y(self):
+        self.assign_to_vec(self.vector1, 0, 1, 0, 1)
+        self.assign_to_vec(self.vector2, 0, 0, 0, 0)
+
+        self.solver.add(
+            self.eq_solver.add_vec(self.vector1,
+                                   self.vector2,
+                                   self.result))
+
+        self.verify_result(0, 1, 0, 1)
+
+    def test_add_negative(self):
+        self.assign_to_vec(self.vector1, 0, 1, 0, 0)
+        self.assign_to_vec(self.vector2, -1, 0, 1, 0)
+
+        self.solver.add(
+            self.eq_solver.add_vec(self.vector1,
+                                   self.vector2,
+                                   self.result))
+
+        self.verify_result(-1, 1, 0, 0)
+

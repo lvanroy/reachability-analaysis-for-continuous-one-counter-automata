@@ -165,7 +165,7 @@ class Automaton:
     def get_initial_node(self):
         return self.initial_node
 
-    def get_lower_bound(self) -> float:
+    def get_lower_bound(self) -> int:
         return self.lower_bound
 
     def set_lower_bound(self, bound):
@@ -174,7 +174,7 @@ class Automaton:
     def set_upper_bound(self, bound):
         self.upper_bound = bound
 
-    def get_upper_bound(self) -> float:
+    def get_upper_bound(self) -> int:
         return self.upper_bound
 
     def initialize_loops(self):
