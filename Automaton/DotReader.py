@@ -28,11 +28,11 @@ class DotReader:
         }
 
         self.operation_matcher = re.compile(
-            r'([+-][0-9]+\n?)+'
+            r'([+-]([0-9]|[a-z]|[A-Z]|_)+\n?)+'
         )
 
         self.condition_matcher = re.compile(
-            r'((<=|>=|=)[+-]?[0-9]+\n?)+'
+            r'((<=|>=|=)[+-]?([0-9]|[a-z]|[A-Z]|_)+\n?)+'
         )
 
         # keep track of the nodes and edges with incorrect specifications
@@ -101,9 +101,11 @@ class DotReader:
                         # verify whether or not we are dealing with an expression
                         expression = None
                         is_condition = False
-                        if self.operation_matcher.match(label):
+                        if self.operation_matcher.match(label.replace(" ", "")):
+                            label = label.replace(" ", "")
                             expression = self.convert_label_to_expression(label)[0]
-                        if self.condition_matcher.match(label):
+                        if self.condition_matcher.match(label.replace(" ", "")):
+                            label = label.replace(" ", "")
                             expression = self.convert_label_to_expression(label)[0]
                             is_condition = True
 
@@ -281,13 +283,16 @@ class DotReader:
             # iterate over the different characters within the label
             # differentiate between constant and expression
             for char in sub_expr:
-                if char.isnumeric() or (char in ["+", "-"] and op != ""):
+                if char.isalnum() or (char in ["+", "-"] and op != ""):
                     constant += char
                 else:
                     op += char
 
             # create an expression
-            f = Expression(self.ops[op], int(constant))
+            if constant.isnumeric():
+                f = Expression(self.ops[op], int(constant))
+            else:
+                f = Expression(self.ops[op], constant)
 
             expressions.append(f)
 

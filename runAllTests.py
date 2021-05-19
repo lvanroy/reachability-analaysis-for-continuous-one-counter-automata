@@ -7,6 +7,7 @@ from test.Reach.TestIntervals import TestIntervals
 from test.Reach.TestNewReachConfiguration import TestNewReachConfiguration
 from test.Reach.TestPostUpdate import TestPostUpdate
 from test.Reach.TestLoopExpansions import TestLoopExpansion
+from test.Reach.TestIntervalUnion import TestIntervalUnion
 from test.Reach.TestFullScenarioWithoutParameters import TestFullScenarioWithoutParamters
 
 from test.Equations.TestUnion import TestUnion

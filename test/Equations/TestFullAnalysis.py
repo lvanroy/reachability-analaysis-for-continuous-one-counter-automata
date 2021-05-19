@@ -254,3 +254,15 @@ class TestFullAnalysis(unittest.TestCase):
         self.eq_solver.add_final_condition("s3")
         self.assertEqual(self.solver.check(), unsat)
         self.solver.pop()
+
+    def test_path_with_parameter(self):
+        self.create_solver("input/simple_func_reachability_automaton_foo.dot")
+
+        self.analyze()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("Q8")
+        self.assertEqual(self.solver.check(), sat)
+        m = self.solver.model()[self.eq_solver.m].as_long()
+        self.verify_interval_matches(m, m, 5, 5, 1, 1)
+

@@ -105,10 +105,7 @@ class Intervals:
                             low = interval.get_low_bound()
                             incl_low = interval.is_low_inclusive()
                         else:
-                            self.intervals.insert(i+1, Interval(low, incl_low, high, incl_high))
-                            inserted = True
-                            i += 1
-                            break
+                            continue
 
                     # if the current interval extends the uniend in the lower direction
                     # update the uniend to reflect this
@@ -233,11 +230,17 @@ class Intervals:
     def update_inf(self, inf):
         self.intervals[0].update_low(inf, True)
 
+    def update_lower_bound_inclusive(self, inclusive):
+        self.intervals[-1].set_incl_low(inclusive)
+
     def get_sup(self):
         return self.intervals[-1].get_high_bound()
 
     def update_sup(self, sup):
         self.intervals[-1].update_high(sup, True)
+
+    def update_higher_bound_inclusive(self, inclusive):
+        self.intervals[-1].set_incl_high(inclusive)
 
     def is_empty(self):
         is_empty = True

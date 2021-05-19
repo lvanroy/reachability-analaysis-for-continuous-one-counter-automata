@@ -1,5 +1,5 @@
 from z3 import *
-from typing import List
+from typing import List, Dict
 
 import operator
 
@@ -28,7 +28,7 @@ class EquationSolver:
         # from which our transitions need to pick
         # every three consecutive entries form one edge
         #   s0, z0, e0, s1, z1, e1, ...
-        self.edges: List[int] = list()
+        self.edges = list()
 
         # the transition objects created for our formula
         # each of these transitions will match one edge
@@ -41,6 +41,11 @@ class EquationSolver:
         # specific node where the first interval matches node 0
         #   b0, t0, ⊥0, ⊤0, b1, t1, ⊥1, ⊤1, ...
         self.intervals: List[ArithRef] = list()
+
+        # keep track of the found parameters
+        # this is so that we reuse the same variable every time
+        # we refer to this parameter, rather than creating a new one
+        self.parameters: Dict[str, IntVal] = dict()
 
         # track the final transition
         # this transition must end in the goal node
@@ -66,7 +71,7 @@ class EquationSolver:
             self.solve()
         else:
             for node in self.nodes:
-                print("Solving for node {}".format(node))
+                print("\nSolving for node {}".format(node))
                 if self.automaton.is_initial(node):
                     print("Node {} is reachable as it is the initial node".format(node))
                 else:
@@ -128,7 +133,16 @@ class EquationSolver:
             for j in range(0, len(self.edges), 3):
                 and_arguments = list()
                 for k in range(3):
-                    and_arguments.append(transition[k] == self.edges[j + k])
+                    val = self.edges[j + k]
+                    if str(val).lstrip("-").isnumeric():
+                        and_arguments.append(transition[k] == val)
+                    else:
+                        if val in self.parameters:
+                            param = self.parameters[val]
+                        else:
+                            param = Int(val)
+                            self.parameters[val] = param
+                        and_arguments.append(transition[k] == param)
                 for k in range(2):
                     index = int(j / 3 * 2) + k
                     and_arguments.append(condition[k] == self.conditions[index])
@@ -1053,7 +1067,19 @@ class EquationSolver:
     def solve(self):
         if self.s.check() == sat:
             m = self.s.model()
+
+            condition_to_string = {
+                0: ">=",
+                1: "<=",
+                2: "==",
+                3: "no condition"
+            }
+
             print("m = {}".format(m[self.m]))
+
+            print("\nparameters:")
+            for val in self.parameters:
+                print("{} = {}".format(val, m[self.parameters[val]]))
 
             print("\ntransitions:")
             for i in range(m[self.m].as_long() + 1):
@@ -1062,6 +1088,14 @@ class EquationSolver:
                     m[self.transitions[(i * 3) + 1]],
                     self.nodes[m[self.transitions[(i * 3) + 2]].as_long()]
                 ))
+                condition = condition_to_string[m[self.selected_conditions[i * 2]].as_long()]
+                if condition == "no condition":
+                    print("no end condition")
+                else:
+                    print("end cond: {} {}".format(
+                        condition,
+                        m[self.selected_conditions[(i * 2) + 1]].as_long()
+                    ))
 
             print("\nintervals:")
             for r in range(m[self.m].as_long() + 2):
@@ -1069,7 +1103,6 @@ class EquationSolver:
                 print("Round {}".format(r))
                 for j in range(m[self.m].as_long() + 2):
                     start_index = interval_offset + j * 4
-                    # print(self.intervals[start_index: start_index + 4])
                     b = self.intervals[start_index]
                     t = self.intervals[start_index + 1]
                     i_l = self.intervals[start_index + 2]

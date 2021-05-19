@@ -198,7 +198,7 @@ class ReachManager:
             start = loop.get_nodes()[-1]
             end = loop.get_nodes()[0]
             reach = self.reaches[start]
-            reach.update_inf(end, float('inf'))
+            reach.update_inf(end, -float('inf'))
             reach.rescale_reach(end, self.lower_bound, self.upper_bound)
 
         else:

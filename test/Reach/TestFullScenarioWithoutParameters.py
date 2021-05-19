@@ -37,8 +37,8 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
 
         self.assert_interval_matches("s0", "s0", "[0, 0]")
         self.assert_interval_matches("s1", "s0", "[0, 0]")
-        self.assert_interval_matches("s1", "s2", "(0, inf]")
-        self.assert_interval_matches("s2", "s1", "(0, inf]")
+        self.assert_interval_matches("s1", "s2", "(0, inf)")
+        self.assert_interval_matches("s2", "s1", "(0, inf)")
 
     def test_bounded_node(self):
         self.initialise_automaton("input/one_node_bounded_automaton.dot")
@@ -95,3 +95,32 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assertTrue(self.manager.is_reachable("s0"))
         self.assertTrue(self.manager.is_reachable("s1"))
         self.assertTrue(self.manager.is_reachable("s2"))
+
+    def test_downwards_acceleration(self):
+        self.initialise_automaton("input/downwards _acceleration_example.dot")
+
+        while not self.manager.is_finished():
+            self.manager.update_automaton()
+
+        self.assert_interval_matches("Q0", "Q0", "[0, 0]")
+        self.assert_interval_matches("Q1", "Q0", "[0, 0]")
+        self.assert_interval_matches("Q2", "Q1", "[0, 0]")
+        self.assert_interval_matches("Q2", "Q15", "(-inf, inf)")
+        self.assert_interval_matches("Q15", "Q2", "(-inf, inf)")
+        self.assert_interval_matches("Q6", "Q2", "(-inf, inf)")
+        self.assert_interval_matches("_0", "Q6", "[5, 5]")
+        self.assert_interval_matches("Q7", "_0", "[5, 5]")
+        self.assert_interval_matches("Q8", "Q7", "[5, 5]")
+        self.assert_interval_matches("Q8", "Q7", "[5, 5]")
+        self.assert_interval_matches("Q9", "Q6", "(-inf, inf)")
+        self.assert_interval_matches("_1", "Q9", "(-inf, 5]")
+        self.assert_interval_matches("Q10", "_1", "(-inf, 5]")
+        self.assert_interval_matches("Q13", "Q10", "(-inf, 5)")
+        self.assert_interval_matches("Q12", "_2", "[5, inf)")
+        self.assert_interval_matches("Q14", "Q13", "(-inf, 5) (5, inf)")
+        self.assert_interval_matches("Q11", "Q6", "(-inf, inf)")
+        self.assert_interval_matches("_2", "Q11", "[5, inf)")
+        self.assert_interval_matches("Q13", "Q12", "(5, inf)")
+
+
+

@@ -16,9 +16,19 @@ class Reach:
 
     def update_sup(self, state, sup):
         self.reachable_set[state].update_sup(sup)
+        if sup == float('inf'):
+            self.update_higher_bound_inclusive(state, False)
 
     def update_inf(self, state, inf):
         self.reachable_set[state].update_inf(inf)
+        if inf == -float('inf'):
+            self.update_lower_bound_inclusive(state, False)
+
+    def update_lower_bound_inclusive(self, state, inclusive):
+        self.reachable_set[state].update_lower_bound_inclusive(inclusive)
+
+    def update_higher_bound_inclusive(self, state, inclusive):
+        self.reachable_set[state].update_higher_bound_inclusive(inclusive)
 
     def rescale_reach(self, state, lower_bound, higher_bound):
         if state in self.reachable_set:
