@@ -96,29 +96,20 @@ def analyze_reachability_with_interval(dot_file):
     fully_reachable = True
 
     if args['node'] is not None:
-        if manager.is_reachable(args['node']):
-            print('The node {} was found to be reachable '
-                  'with the following reaches:'.format(args['node']))
-            print(manager.get_reach(args['node']))
-        else:
+        if not manager.is_reachable(args['node']):
             fully_reachable = False
-            print('The node {} was found to be not '
-                  'reachable'.format(args['node']))
+            if args['node'][0] == "Q":
+                print('Line {} was found to be not '
+                      'reachable.'.format(args['node'][1:]))
     else:
         for node in automaton.get_nodes():
             if automaton.is_invisible(node):
                 continue
-            if manager.is_reachable(node):
-                print('The node {} was found to be reachable '
-                      'with the following reaches:'.format(node))
-                reach = manager.get_reach(node)
-                for preceding in reach.get_preceding_nodes():
-                    print('{}: {}'.format(preceding, reach.get_reachable_set(preceding)))
-            else:
+            if not manager.is_reachable(node):
                 fully_reachable = False
-                print('The node {} was found to be not '
-                      'reachable'.format(node))
-            print()
+                if node[0] == "Q":
+                    print('Line {} was found to be not '
+                          'reachable.'.format(node[1:]))
 
     return fully_reachable
 
@@ -135,8 +126,20 @@ def analyze_reachability_with_formula(dot_file):
     automaton.set_upper_bound(args['high'])
     automaton.set_initial_value(args['start'])
 
-    solver = EquationSolver(automaton)
+    solver = EquationSolver(automaton, args["node"])
     solver.analyse()
+
+    fully_reachable = False
+
+    for node in solver.reachable:
+        if not solver.reachable[node]:
+            fully_reachable = False
+
+        if node[0] == "Q" and not solver.reachable[node]:
+            print('Line {} was found to be not '
+                  'reachable.'.format(node[1:]))
+
+    return fully_reachable
 
 
 def str2bool(v):
@@ -214,7 +217,12 @@ if args['op'] == "full":
     print()
     for file in files:
         print("Starting to analyze: {}".format(file))
-        result = analyze_reachability_with_interval(file)
+
+        if args['method'] == "interval":
+            result = analyze_reachability_with_interval(file)
+        else:
+            result = analyze_reachability_with_interval(file)
+
         reachabilities[file] = result
 
     for file_name in reachabilities:

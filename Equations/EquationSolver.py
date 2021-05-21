@@ -55,8 +55,8 @@ class EquationSolver:
         # mark the goal node if there is any
         self.goal_node = goal_node
 
-        self.addends = list()
-        self.y = list()
+        # track the reachability of nodes
+        self.reachable = dict()
 
     def analyse(self):
         self.build_transitions()
@@ -77,6 +77,7 @@ class EquationSolver:
                 else:
                     self.s.push()
                     self.add_final_condition(node)
+                    self.reachable[node] = self.s.check() == sat
                     self.solve()
                     self.s.pop()
 
@@ -166,7 +167,6 @@ class EquationSolver:
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         y = IntVector(vec_name, 4)
-        self.y += y
 
         or_arguments = list()
 
@@ -177,7 +177,6 @@ class EquationSolver:
         addend_name = 'addend{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         addend = IntVector(addend_name, 4)
-        self.addends += addend
 
         and_args += self.assign(addend, 0, z, 0, 1)
         and_args.append(self.add_vec(start_interval,
@@ -193,7 +192,6 @@ class EquationSolver:
         addend_name = 'addend{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         addend2 = IntVector(addend_name, 4)
-        self.addends += addend2
 
         and_args += self.assign(addend2, z, 0, 1, 0)
         and_args.append(self.add_vec(start_interval,
@@ -237,12 +235,10 @@ class EquationSolver:
         self.s.add(And(self.assign(interval,
                                    low, high,
                                    incl_low, incl_high)))
-        self.y += interval
 
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         y2 = IntVector(vec_name, 4)
-        self.y += y2
 
         self.intersect_vec(y, interval, y2)
 
@@ -254,7 +250,6 @@ class EquationSolver:
         vec_name = 'ab{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         interval = IntVector(vec_name, 4)
-        self.y += interval
 
         or_arguments = list()
         or_arguments.append(
@@ -287,7 +282,6 @@ class EquationSolver:
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         y3 = IntVector(vec_name, 4)
-        self.y += y3
 
         self.intersect_vec(y2, interval, y3)
 
@@ -310,11 +304,11 @@ class EquationSolver:
 
     def build_intervals(self):
         # initialise all intervals
-        for r in range(len(self.nodes)+1):
-            for n in range(len(self.nodes)+1):
+        for r in range(len(self.nodes) + 1):
+            for n in range(len(self.nodes) + 1):
                 self.intervals += self.generate_interval(r, n)
 
-        for i in range(len(self.nodes)+1):
+        for i in range(len(self.nodes) + 1):
             base = i * 4
             if i == 0:
                 initial_value = self.automaton.get_initial_value()
@@ -344,7 +338,6 @@ class EquationSolver:
                                        start_interval[2],
                                        start_interval[3])
                     self.s.add(And(expr))
-
 
     @staticmethod
     def generate_interval(r, node_index):
@@ -401,7 +394,7 @@ class EquationSolver:
                 addend[2],
                 addend[3]
             )
-        ))
+            ))
         and_arguments.append(
             Or(self.is_not_empty(
                 start[0],
@@ -409,7 +402,7 @@ class EquationSolver:
                 start[2],
                 start[3]
             )
-        ))
+            ))
         for i in range(2):
             start_var = start[i]
             addend_var = addend[i]

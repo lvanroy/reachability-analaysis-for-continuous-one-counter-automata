@@ -285,7 +285,7 @@ class ReachManager:
                         new_interval = Intervals(z, True, 0, False)
                         new_interval.add(sub_interval)
                     else:
-                        new_interval = sub_interval
+                        new_interval = deepcopy(sub_interval)
 
                     self.reaches[q].update_reach(p, new_interval)
                     self.reaches[q].rescale_reach(p, self.lower_bound, self.upper_bound)
