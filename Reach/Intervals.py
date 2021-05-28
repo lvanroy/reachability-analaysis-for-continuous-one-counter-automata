@@ -230,11 +230,17 @@ class Intervals:
     def update_inf(self, inf):
         self.intervals[0].update_low(inf, True)
 
+    def is_inf_inclusive(self):
+        return self.intervals[0].is_low_inclusive()
+
     def update_lower_bound_inclusive(self, inclusive):
         self.intervals[-1].set_incl_low(inclusive)
 
     def get_sup(self):
         return self.intervals[-1].get_high_bound()
+
+    def is_sup_inclusive(self):
+        return self.intervals[-1].is_high_inclusive()
 
     def update_sup(self, sup):
         self.intervals[-1].update_high(sup, True)

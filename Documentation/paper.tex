@@ -138,29 +138,40 @@ The automata used in this research are a specific subset of the generally define
 	\item $F \subseteq Q$ is a set of states of Q defining the final states, 
 \end{itemize}
 
-\subsection{Parametric counter automata}
-
-A one-counter automaton is a tuple $\mathcal{A}$ = $(Q, q_0, \sigma, op, F)$ where
+\subsection{Continuous one-counter automata}
+A continuous one-counter automaton (COCA) is defined as a tuple $\mathcal{A}$ = $(Q, q_0, T, \tau)$ where
 \begin{itemize}
 	\item $Q$ is a finite set of states
 	\item $q_0 \in Q$ is the initial state
-	\item $F \subseteq Q$ is the set of accepting states
-	\item $op$ is the set of operations
-	\item $\sigma \subseteq Q \times op \times Q$ is the transition relation with $op$ the set of operations
+	\item $T \subseteq Q \times op \times Q$ is the transition relation with $op$ the set of operations
+	\item $I$ is a representation of all intervals over $\mathbb{Q}$
+	\item $\tau: Q \rightarrow I$ is the mapping of the reachability intervals
 \end{itemize}
 
-The counter valuation $c \in \mathbb{N}$ is the value that will be analysed and updated during the evaluation of the automaton.
+At all times the automaton will be in a configuration $(q, c)$ where $q \in Q$ and $c$ the counter valuation where $(q_0, 0)$ is the initial configuration. The counter valuation $c \in \mathbb{N}$ represent one single value for which the counter is evaluated. In our analysis the goal will be to find the range of possible counter values that the counter can have in each state $q \in Q$.
 
-At all times the automaton will be in a configuration $(q, c)$ where $q \in Q$ and $c$ the counter valuation where $(q_0, 0)$ is the initial configuration.
-
-Parametric counter automata, as compared to regular counter automata, allow counters to be modified by parameters as well as constants. As the counters need to be integers, we will only allow integer type paramters. We will consider the following set of allowed operations where $P$ is the set of parameters, the $\epsilon$ symbol will be used to represent an empty label.
+The $\tau$ parameter represents the mapping from all states to the interval of possible counter values that can exist in that state. For example, if a node $q$ has an associated condition stating $\leq 4$ the $\tau$ function would have entry for node $q$ equal to $(-\infty, 4]$. The set of supported constraints within our evaluation are visualised by the $cond$ set below with $\epsilon$ representing the empty condition. Note that this is not binding for the code that we can analyse, several conditions might be convertible to constructs using only supported statements.
 \[
- op = \{+c, -c, +p, -p, \leq c, =c, \geq c, \leq p, =p, \geq p: c \in \mathbb{N}, p \in P\} \cup \{\epsilon\}
+cond = \{\leq c, =c, \geq c, \leq p, =p, \leq p: c \in \mathbb{N}, p \in P\} \cup \{\epsilon\}
 \]
 
-The automata we will consider will be one-counter parametric automata. The set $Q$ will contain a state for each line of code. The initial state $q_0$ will be the state corresponding with the first line of code. For now the set of final states $F$ will be empty, but the intended interpretation of a final state will be the line of which the reachability will be checked. The transition relation will consist of elements of the form $(q_i, l, q_{i+1})$ where $q_i, q_{i+1} \in Q$ and $l \in op$. 
+Parametric counter automata, as compared to regular counter automata, allow counters to be modified by parameters as well as constants. As the counters need to be integers, we will only allow integer type parameters. We will consider the following set of allowed operations where $P$ is the set of parameters, the $\epsilon$ symbol will be used to represent an empty label.
+\[
+op = \{+c, -c, +p, -p: c \in \mathbb{N}, p \in P\} \cup \{\epsilon\}
+\]
 
-There are a few exceptions to the above described states, some segments will have additional nodes to avoid confusion. These special nodes, and their meaning, will be further explained in their relevant sections inside Section \ref{sec:generation}, \nameref{sec:generation}.
+The final state is omitted from this definition as we are not interested in this. In general the reachability of every single line of code will be under scope and not a single one of the lines. Furthermore, making the assumption that the final state is the only state of which we want to analyse reachability creates a significant reduction in the use cases of this approach, and was therefore discarded.
+
+\subsection{COCA reachability}
+In this section we give an overview of how we approach the concept of reachability. The provided concept was proven by Michael Blonding et al. \cite{blondin2021continuous} and will be the basis for the remainder of the approach.
+
+Throughout the evaluation we will be tracking an interval $I$ which will have $\vert Q \vert$ entries each corresponding to the counter values that can exist within their respective node. 
+
+The concept of reachability will be associated with whether or not a certain node has a non empty interval at the end of the evaluation. A non empty interval automatically implies that the node must be reachable cause if a node can have a counter value, it recursively implies that there must be a path $\pi$ in which all preceding nodes also have non empty intervals.
+
+For this evaluation we will allow transitions to be partially taken. This means that every transition can be scaled by an unknown factor $\alpha \in (0,1]$. This implies that given that we have a preceding interval $[0, 3]$ and an operation $+2$ our resulting interval will not be $[2, 5]$ but rather $(0, 5]$ as with $\alpha \approx 0$ we would remain at zero and with $\alpha = 2$ we would be able to go up to 5. The zero is not included within the resulting interval as we do not allow our $\alpha$ to actually be zero.
+
+The partial aspect of transitions leads to potential false positives. In the example of $[0, 3] + 2 \rightarrow (0, 5]$ we might later on assume that counter values can be 0, which is not necessarily the case. We do however guarantee that in case we decide that a node is not reachable, this does hold. This implies that we may not be able to prove the reachability of every line, but for every line where we can prove it we know for certain that it is correct.
 
 \section{C code to automata conversion}
 
@@ -787,7 +798,7 @@ This configuration can easily be converted into edge instances, but the labels c
 
 To closely match the specification of the theoretical proof on which this approach is based \cite{blondin2021continuous}, we require edges to only contain operations and not conditions. In case an edge is encountered with a condition as a label, this will be resolved by introducing a new node, \textit{inbetween}, to which this condition will be added. This node will be added as an intermediary step and the condition label will be attached to this node. By ensuring that this node will only have one incoming edge and one outgoing edge we preserve the fact that the condition must hold in case one desires to from from the \textit{origin} node to the \textit{end} node. 
 
-Below is an example of an edge which does not correspond to the assumptions made within the original paper as the edge between \textit{q0} and \textit{q1} has a conditional label. This is resolved in the image on the right by introducing \textit{\_0} without losing the original meaning of the edge in the first image.
+Below in Figure \ref{fig:edgetransformlabel} is an example of an edge which does not correspond to the assumptions made within the original paper as the edge between \textit{q0} and \textit{q1} has a conditional label. This is resolved in the image on the right by introducing \textit{\_0} without losing the original meaning of the edge in the first image.
 
 \begin{figure}[h]%
 	\centering
@@ -819,6 +830,8 @@ Below is an example of an edge which does not correspond to the assumptions made
 		(q4)	edge	node {$ $}	(q1);
 		\end{tikzpicture}
 	}
+	\caption{Transformation of an edge with a conditional label.}
+	\label{fig:edgetransformlabel}
 \end{figure}
 
 \subsubsection{Node transformation}
@@ -830,7 +843,7 @@ Nodes do not require to be specified using a separate node specification rule, a
 
 To match the specification of the theoretical approach specified by Michael Blondin et Al. \cite{blondin2021continuous}, nodes can only contain conditions and not operations. In case a node \textit{origin} is found that has an operation as its label we introduce a new node \textit{inbetween}. By connecting a new edge from the \textit{origin} node to the \textit{inbetween} node we can add the label that was originally attached to \textit{origin} to the new edge. To ensure that the automaton does not lose any meaning we will then move every edge that would normally go out from \textit{origin} to \textit{inbetween}.
 
-In the image below, an example can be seen where node \textit{q1} is not conformant to the original specification. This is resolved by introducing \textit{\_0} from which the edge that was originally going from \textit{q1} to \textit{q2} gets reattached.
+In Figure \ref{fig:nodetransformlabel} below, an example can be seen where node \textit{q1} is not conformant to the original specification. This is resolved by introducing \textit{\_0} from which the edge that was originally going from \textit{q1} to \textit{q2} gets reattached.
 
 \begin{figure}[h]%
 	\centering
@@ -866,6 +879,8 @@ In the image below, an example can be seen where node \textit{q1} is not conform
 		(q1)	edge	node {$+1$}	(q4);
 		\end{tikzpicture}
 	}
+	\caption{Transformation of a node with an operational label.}
+	\label{fig:nodetransformlabel}
 \end{figure}
 
 \subsubsection{Initial node}
@@ -873,8 +888,99 @@ For reachability analysis to be relevant there needs to be an initial node. In a
 
 As a consequence of this feature invisible nodes are assumed to exist within the automaton but these are irrelevant to our analysis. Invisible nodes are by definition not relevant for reachability analysis and are therefore not considered as actual nodes.
 
-\subsection{Continuous one counter automata reachability}
-In this section we will give a description of the solution that was used to determine the reachability for continuous one counter automata. This will be done by showing the approach that was taken, as well as an application to show its usage. This approach is a practical implementation of the theoretical approach described by Michael Blondin et al. \cite{blondin2021continuous}.
+\subsection{Reachability of non parametric COCA}
+In this section we will give a description of the solution that was used to determine the reachability for non parametric continuous one counter automata. This will be done by showing the approach that was taken, as well as an application to show its usage. This approach is a practical implementation of the theoretical approach described by Michael Blondin et al. \cite{blondin2021continuous}.
+
+\subsubsection{Initialization}
+During the initialization phase, we will instantiate all reachability intervals. The initial node will get an initial reachability interval $[i, i]$ where $i$ represents the initial counter value. This is not a fixed value, but will for the sake of this research always default to 0, simply because all integer values in most programming languages default to 0 at initialization.
+
+All other nodes will get an empty interval assigned to them as to signify that they are initially not reachable.
+
+\subsubsection{Interval updates}
+From the initial state, we will start doing cycles in which we update all intervals once, wherever possible. This will be done using the successor function \textit{succ} below where $R_i: Q -> 2^\mathbb{Q}$ represent the mapping function for the i-th iteration. This function is going from each state to its corresponding counter reachability interval. The \textit{succ} function will update the interval of one state, \textit{q}, to its next iteration, based upon the current configuration.
+
+\begin{gather*}
+	\hspace{-190 pt} succ_q(R_i) := R_i(q)\\
+	\hspace{60 pt} \cup \bigcup \{(R_i(r) + (0, z]) \cap \tau(q)\,|\,(r,z,q) \in T, z>0\}\\
+	\hspace{60 pt} \cup \bigcup \{(R_i(r) + (z, 0]) \cap \tau(q)\,|\,(r,z,q) \in T, z<0\}\\
+	\hspace{-20 pt} \cup \bigcup \{R_i(r) \cap \tau(q)\,|\,(r,0,q) \in T\}
+\end{gather*}
+
+This formula allows us to iteratively compute the next interval configuration to fully explore which states have a non empty interval. Consider the example given in Figure \ref{fig:example_succ}. We will initialise $R_0$ to have all empty intervals, other than the first which we will initialise to $[0, 0]$. Note that these intervals are stored per pair of final and preceding node and not, as the formula would suggest, per node in general. This is because this allows us to have a better tracking of which path has which effect, which will help us in later steps.
+
+\begin{figure}[h]%
+	\centering
+	\begin{tikzpicture}[auto, >=latex, node distance = 1 cm]
+		\tikzstyle{round} = [thick, draw=black, circle, font=\small]
+		\tikzstyle{invis} = [draw=none, font=\small]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[round] 	at (0, 0) 		(q0) 	{$q_0$};
+		\node[round] 	at (3, 0)		(q1) 	{$q_1$};
+		\node[round] 	at (6, 0)		(q2) 	{$q_2$};
+		\node[round] 	at (9, 0)		(q3) 	{$q_3$};
+		\node[invis]	at (10, 0.5)		(q4)	{$\geq 100$};
+		
+		\path[->]
+			(q0) 	edge 					node 					{$+1$}	(q1)
+			(q1) 	edge 	[bend left]		node	[right, above] 	{$+1$} 	(q2)
+			(q2)	edge 	[bend left]		node	[right, below]	{$+1$}	(q1)
+			(q2)	edge 					node					{}		(q3);
+	\end{tikzpicture}
+	\caption{Example of a guarded automaton on which the succ function can be applied.}
+	\label{fig:example_succ}
+\end{figure}
+
+
+
+\begin{table}[h]
+	\begin{tabular}{ |c|c|c|c|c|c|c|c| }
+		\hline
+		q		& r 	& $R_0$ 		& $R_1$			& $R_2$			& $R_3$			& $R_4$ 		& $R_5$ \\
+		\hline
+		$q_0$	& $q_0$ & [0, 0] 		& [0, 0] 		& [0, 0] 		& [0, 0]		& [0, 0]		& [0, 0] \\
+		$q_1$	& $q_0$ & $\emptyset$ 	& (0, 1]		& (0, 1] 		& (0, 1]		& (0, 1] 		& (0, 1] \\
+		$q_1$	& $q_2$ & $\emptyset$ 	& $\emptyset$ 	& $\emptyset$	& (0, 3]		& (0, 3] 		& (0, 5] \\
+		$q_2$	& $q_1$ & $\emptyset$ 	& $\emptyset$ 	& (0, 2] 		& (0, 2]		& (0, 4] 		& (0, 4] \\
+		$q_3$	& $q_2$ & $\emptyset$ 	& $\emptyset$ 	& $\emptyset$	& $\emptyset$	& $\emptyset$	& $\emptyset$ \\
+		\hline
+	\end{tabular}
+	\centering
+	\caption{Decision table for the scenario in which a guest occupies a new cell.}
+	\label{table:table_example_succ}
+\end{table}
+
+For the first successor, we will only update for the transition going from $q_0$ to $q_1$ as this is the only transition where there is a preceding node that is not empty. All other transitions will both have an empty interval for the start and ends nodes which will therefore trivially result in empty intervals after applying the succ function. When we apply the succ function on the first interval, we will get $(0, 1]$ as a resulting interval. The 0 is not included as the $(0,z]$ with $z=1$ which we will add to it does not include 0. As $q_1$ has no condition the $\tau(q_1)$ will simply be $(-\infty, \infty)$ and will therefore have no effect.
+
+The second successor will update for the transitions going from $q_1$ to $q_2$. This update will be similar to the update that happened for $q_0$ to $q_1$ in every way but the starting interval, which is now (0, 1] and will thus result in an interval of (0, 2].
+
+Next, for the third successor, one would say that we can update both the transition going back form $q_2$ to $q_1$ and the transition going from $q_2$ to $q_3$. However, the latter is not updatable as $R_2(q_2) \cap \tau(q_3)$ will result in an empty set, considering that $\tau(q_3) = [100, \infty)$.
+
+As can be seen in Table \ref{table:table_example_succ} a few more successors were computed and we can clearly notice that we will eventually reach an interval which will exceed the 100 bound which is placed upon $q_3$. Reaching this interval will however take us quite some time, and considering that this is only a small example, this is far from desired. Furthermore, this loop is not bounded, this means that it can infinitely expand. A solution for this is loop acceleration in which we will accelerate our loop based upon the behaviour said loop shows. This solution will be discussed within the next sections.
+
+\subsubsection{Loop acceleration}
+
+Unfortunately, the succ function is not guaranteed to find the bounds in an acceptable number of evaluations. For example, the scenario given in Figure 23 would never converge at all. The interval of the loop between $q_1$ and $q_2$ will keep expanding indefinitely and the evaluation will therefore never stop.
+
+To perform loop acceleration we need to consider the notion of \textit{expanding cycles}. A cycle or loop is considered to be \textit{positively expanding} if there is a state sequence $q_i, q_{i+1}, q_{i+2}, ..., q_n$ such that:
+\begin{enumerate}
+	\item $q_i = q_n$
+	\item $(q_j, z_j, q_{j+1}) \in T$ for all $j \in [i, n-1]$
+	\item $R_n \subseteq R_i$
+	\item $sup(R_i) \geq sup(R_n)$
+\end{enumerate}
+
+Similarly we say that a cycle is \textit{negatively expanding} if the following hold:
+\begin{enumerate}
+	\item $q_i = q_n$
+	\item $(q_j, z_j, q_{j+1}) \in T$ for all $j \in [i, n-1]$
+	\item $R_n \subseteq R_i$
+	\item $inf(R_i) \leq inf(R_n)$
+\end{enumerate}
+
+Given that we know whether or not a cycle is either positively or negatively expanding, we can look for the strongest bound relative to the direction in which the loop expands. 
+
+\subsubsection{Efficiency}
 
 \begin{landscape}
 	\begin{figure}

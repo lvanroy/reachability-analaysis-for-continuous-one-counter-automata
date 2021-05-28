@@ -24,15 +24,12 @@ class ReachManager:
         #   the dict will be updated at the end of every post operation, rather than during
         self.intervals: Dict[str, Dict[str, Intervals]] = dict()
 
-        # for each node we will track the number of consecutive times in which
-        # the interval expanded. It is tracked for each proceeding state of each state
-        #   interval expanded or remained the same size -> +1
-        #   interval decreased in size -> 0
-        self.up_expansions: Dict[Loop, int] = dict()
-        self.down_expansions: Dict[Loop, int] = dict()
-
         # keep track of the number of steps we have encountered
         self.n = 0
+
+        # keep track of the encountered loops
+        # the loops will be popped after accelerating
+        self.loops = self.automaton.get_loops()
 
         # store whether or not we are finished evaluating
         # this is equivalent to no updated reaches during
@@ -45,7 +42,6 @@ class ReachManager:
 
         self.initialise_intervals()
         self.initialise_reaches()
-        self.initialize_expansions()
         self.update_intervals()
 
     def initialise_reaches(self):
@@ -63,59 +59,11 @@ class ReachManager:
                 continue
             self.intervals[node] = dict()
 
-    def initialize_expansions(self):
-        for loop in self.automaton.get_loops():
-            self.up_expansions[loop] = 0
-            self.down_expansions[loop] = 0
-
     def update_intervals(self):
         for node in self.reaches:
             for node2 in self.reaches:
                 interval = self.reaches[node].get_reachable_set(node2)
                 self.intervals[node][node2] = deepcopy(interval)
-
-    def update_expansions(self):
-        for loop in self.automaton.get_loops():
-            expanded = True
-            expanded_up = True
-            expanded_down = True
-            loop_nodes = loop.get_nodes()
-            for i in range(len(loop_nodes)):
-                current_node = loop_nodes[i]
-                prev_node = loop_nodes[i-1]
-                old_interval = self.intervals[current_node][prev_node]
-                new_interval = self.reaches[current_node].get_reachable_set(prev_node)
-                if new_interval is None:
-                    expanded = False
-                    break
-                if old_interval is None:
-                    continue
-                is_expansion = new_interval.is_expansion_of(old_interval)
-                if not is_expansion:
-                    expanded = False
-                    break
-                if old_interval.is_empty():
-                    continue
-                if new_interval.is_empty():
-                    expanded = False
-                    break
-                if new_interval.get_inf() > old_interval.get_inf():
-                    expanded_down = False
-                if new_interval.get_inf() < old_interval.get_inf():
-                    loop.register_downwards_expansion()
-                if new_interval.get_sup() < old_interval.get_sup():
-                    expanded_up = False
-                if new_interval.get_sup() > old_interval.get_sup():
-                    loop.register_upwards_expansion()
-
-            if expanded:
-                if expanded_down:
-                    self.down_expansions[loop] += 1
-                if expanded_up:
-                    self.up_expansions[loop] += 1
-            else:
-                self.down_expansions[loop] = 0
-                self.up_expansions[loop] = 0
 
     def add_state(self, state):
         nodes = self.automaton.get_nodes()
@@ -150,12 +98,11 @@ class ReachManager:
         else:
             return None
 
-    def get_down_expansions(self) -> Dict[Loop, int]:
-        return self.down_expansions
-
-    def get_up_expansions(self) -> Dict[Loop, int]:
-        return self.up_expansions
-
+    # UPDATE THESE TO VERIFY WHETHER OR NOT THE CURRENT SUP/INF IS AN EXTENSION OF THE PREVIOUS
+    # ADD THE RESULT IN THE CHECK_FOR_ACCELERATION FUNCTION
+    # THINK ABOUT INTERVALS OR REACHES, PREFER INTERVALS AND SIMPLY VERIFY WHETHER OR NOT THE
+    # CURRENT SUP/INF DOES NOT ALREADY EXCEED THE VALUE WE WISH TO ASSIGN, WHICH WOULD BE DUE TO
+    # A DIFFERENT LOOP EVALUATION
     def is_ready_for_down_acceleration(self, loop):
         nr_of_nodes = len(self.automaton.get_nodes())
         bound = nr_of_nodes * (4 * nr_of_nodes + 4)
@@ -165,6 +112,130 @@ class ReachManager:
         nr_of_nodes = len(self.automaton.get_nodes())
         bound = nr_of_nodes * (4 * nr_of_nodes + 4)
         return self.up_expansions[loop] >= bound
+
+    def check_for_accelerations(self):
+        for loop in self.loops:
+            nodes = loop.get_nodes()
+            upper_bound = None
+            upper_node_bound = None
+            upper_bound_node = None
+            upper_bound_preceding_node = None
+            lower_bound = None
+            lower_node_bound = None
+            lower_bound_node = None
+            lower_bound_preceding_node = None
+
+            # verify whether or not the entire chain has been discovered
+            # track the min encountered value for upper bound - v
+            # track the min encounter value for v - lower bound
+            loop_discovered = True
+            for i in range(len(nodes)):
+                prev_node = nodes[i]
+                current_node = nodes[i % len(nodes)]
+
+                # if the reach set does not exist we have not fully evaluated
+                # the loop yet and can therefore exit
+                # in case the set exists but is empty, it means that we have
+                # found a state that is at least for now not reachable, we
+                # we can therefore exit
+                reach = self.reaches[current_node]
+                reach_set = reach.get_reachable_set(prev_node)
+                if reach_set is None or reach_set.is_empty():
+                    loop_discovered = False
+                    break
+
+                current_node_obj = self.automaton.get_node(current_node)
+                condition = current_node_obj.get_condition()
+
+                # a condition was found
+                # make sure that both bounds are correctly identified
+                # in case of infinity there is no use for further evaluation
+                # and we directly end the evaluation for that side here
+                current_upper_bound = None
+                current_lower_bound = None
+                if condition is not None:
+                    operation = condition.get_operation()
+                    value = condition.get_value()
+                    if operation == "<=":
+                        current_upper_bound = value
+                        if lower_bound is None:
+                            lower_bound = -float('inf')
+                            lower_bound_node = current_node
+                            lower_bound_preceding_node = prev_node
+                    elif operation == ">=":
+                        current_lower_bound = value
+                        if upper_bound is None:
+                            upper_bound = float('inf')
+                            upper_bound_node = current_node
+                            upper_bound_preceding_node = prev_node
+                    else:
+                        current_upper_bound = value
+                        current_lower_bound = value
+
+                # no condition so the node bound is (-inf, inf)
+                else:
+                    if upper_bound is None:
+                        upper_bound = float('inf')
+                        upper_bound_node = current_node
+                        upper_bound_preceding_node = prev_node
+                    if lower_bound is None:
+                        lower_bound = -float('inf')
+                        lower_bound_node = current_node
+                        lower_bound_preceding_node = prev_node
+                    continue
+
+                # get the current max value
+                # if not inclusive we can simply subtract 0.1 as we work
+                # under the assumption that all values are integers
+                if current_upper_bound is not None:
+                    if reach_set.is_sup_inclusive():
+                        current_max_v = reach_set.get_sup()
+                    else:
+                        current_max_v = reach_set.get_sup() - 0.1
+                    current_upper_dif = current_upper_bound - current_max_v
+                    if upper_bound is None or current_upper_dif < upper_bound:
+                        upper_bound = current_upper_dif
+                        upper_node_bound = current_upper_bound
+                        upper_bound_node = current_node
+                        upper_bound_preceding_node = prev_node
+
+                # get the current min value
+                # if not inclusive we can simply subtract 0.1 as we work
+                # under the assumption that all values are integers
+                if current_lower_bound is not None:
+                    if reach_set.is_inf_inclusive():
+                        current_min_v = reach_set.get_inf()
+                    else:
+                        current_min_v = reach_set.get_inf() + 0.1
+                    current_lower_dif = current_min_v - current_lower_bound
+                    if lower_bound is None or current_lower_dif < lower_bound:
+                        lower_bound = current_lower_dif
+                        lower_node_bound = current_lower_bound
+                        lower_bound_node = current_node
+                        lower_bound_preceding_node = prev_node
+
+            # if the loop was not ready for acceleration, simply continue
+            if not loop_discovered:
+                continue
+
+            # accelerate the upper bound
+            reach = self.reaches[upper_bound_node]
+            if upper_bound == float('inf'):
+                reach.update_inf(upper_bound_preceding_node, float('inf'))
+                reach.update_higher_bound_inclusive(upper_bound_preceding_node, False)
+            else:
+                reach.update_inf(upper_bound_preceding_node, upper_node_bound)
+                reach.update_higher_bound_inclusive(upper_bound_preceding_node, True)
+
+            # accelerate the lower bound
+            reach = self.reaches[lower_bound_node]
+            if lower_bound == float('inf'):
+                reach.update_inf(lower_bound_preceding_node, float('inf'))
+                reach.update_higher_bound_inclusive(lower_bound_preceding_node, False)
+            else:
+                reach.update_inf(lower_bound_preceding_node, lower_node_bound)
+                reach.update_higher_bound_inclusive(lower_bound_preceding_node, True)
+
 
     def accelerate_up(self, loop):
         if not loop.has_upwards_expanded():
@@ -253,7 +324,6 @@ class ReachManager:
         if self.finished:
             return
 
-        self.update_expansions()
         self.update_intervals()
         self.n += 1
 
