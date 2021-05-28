@@ -97,11 +97,6 @@ class ReachManager:
         else:
             return None
 
-    # UPDATE THESE TO VERIFY WHETHER OR NOT THE CURRENT SUP/INF IS AN EXTENSION OF THE PREVIOUS
-    # ADD THE RESULT IN THE CHECK_FOR_ACCELERATION FUNCTION
-    # THINK ABOUT INTERVALS OR REACHES, PREFER INTERVALS AND SIMPLY VERIFY WHETHER OR NOT THE
-    # CURRENT SUP/INF DOES NOT ALREADY EXCEED THE VALUE WE WISH TO ASSIGN, WHICH WOULD BE DUE TO
-    # A DIFFERENT LOOP EVALUATION
     def is_ready_for_down_acceleration(self, loop):
         # track whether or not there is an actual step downwards
         # in case all infimums did not change this is not a downward acceleration
@@ -109,7 +104,7 @@ class ReachManager:
 
         for i in range(len(loop)):
             prev_node = loop[i]
-            current_node = loop[i % len(loop)]
+            current_node = loop[(i + 1) % len(loop)]
 
             # analyse the current interval
             reach = self.reaches[current_node]
@@ -127,7 +122,7 @@ class ReachManager:
                 return False
 
             # detect decrease in the case that the infimum decreased
-            if current_inf > previous_inf:
+            if previous_inf > current_inf:
                 decreased = True
 
             # detect decrease in the case that the infimum remained the same but became inclusive
@@ -145,7 +140,7 @@ class ReachManager:
 
         for i in range(len(loop)):
             prev_node = loop[i]
-            current_node = loop[i % len(loop)]
+            current_node = loop[(i + 1) % len(loop)]
 
             # analyse the current interval
             reach = self.reaches[current_node]
@@ -192,7 +187,7 @@ class ReachManager:
             loop_discovered = True
             for i in range(len(nodes)):
                 prev_node = nodes[i]
-                current_node = nodes[i % len(nodes)]
+                current_node = nodes[(i + 1) % len(nodes)]
 
                 # if the reach set does not exist we have not fully evaluated
                 # the loop yet and can therefore exit
@@ -342,10 +337,11 @@ class ReachManager:
                 continue
             self.update_state(state)
 
-        self.check_for_accelerations()
-
         if self.debug:
             print(self)
+
+        self.check_for_accelerations()
+
 
         self.verify_end_condition()
         if self.finished:
