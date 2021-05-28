@@ -18,9 +18,7 @@ class Expression:
         return self.op(val, self.const)
 
     def get_value(self) -> int:
-        if self.get_operation() == "-":
-            return - self.const
-        return self.const
+        return int(self.const)
 
     def get_operation(self):
         return self.op_to_string[self.op]

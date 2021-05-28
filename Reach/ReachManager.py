@@ -126,7 +126,7 @@ class ReachManager:
             if previous_inf < current_inf:
                 return False
 
-            # detect decrese in the case that the infimum decreased
+            # detect decrease in the case that the infimum decreased
             if current_inf > previous_inf:
                 decreased = True
 
@@ -134,7 +134,7 @@ class ReachManager:
             if current_inf == previous_inf and current_inc and not previous_inc:
                 decreased = True
 
-            # do nothing in the case that the infimum remained the exact saeme
+            # do nothing in the case that the infimum remained the exact same
 
         return decreased
 
@@ -170,7 +170,7 @@ class ReachManager:
             if current_sup == previous_sup and current_inc and not previous_inc:
                 increased = True
 
-            # do nothing in the case that the supremum remained the exact saeme
+            # do nothing in the case that the supremum remained the exact same
 
         return increased
 
@@ -292,21 +292,21 @@ class ReachManager:
             if self.is_ready_for_up_acceleration(nodes):
                 reach = self.reaches[upper_bound_node]
                 if upper_bound == float('inf'):
-                    reach.update_inf(upper_bound_preceding_node, float('inf'))
+                    reach.update_sup(upper_bound_preceding_node, float('inf'))
                     reach.update_higher_bound_inclusive(upper_bound_preceding_node, False)
                 else:
-                    reach.update_inf(upper_bound_preceding_node, upper_node_bound)
+                    reach.update_sup(upper_bound_preceding_node, upper_node_bound)
                     reach.update_higher_bound_inclusive(upper_bound_preceding_node, True)
 
             # accelerate the lower bound
             if self.is_ready_for_down_acceleration(nodes):
                 reach = self.reaches[lower_bound_node]
-                if lower_bound == float('inf'):
-                    reach.update_inf(lower_bound_preceding_node, float('inf'))
-                    reach.update_higher_bound_inclusive(lower_bound_preceding_node, False)
+                if lower_bound == -float('inf'):
+                    reach.update_inf(lower_bound_preceding_node, -float('inf'))
+                    reach.update_lower_bound_inclusive(lower_bound_preceding_node, False)
                 else:
                     reach.update_inf(lower_bound_preceding_node, lower_node_bound)
-                    reach.update_higher_bound_inclusive(lower_bound_preceding_node, True)
+                    reach.update_lower_bound_inclusive(lower_bound_preceding_node, True)
 
     def verify_end_condition(self):
         for node in self.reaches:
