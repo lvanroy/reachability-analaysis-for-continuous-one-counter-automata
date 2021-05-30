@@ -54,13 +54,6 @@ class TestPostUpdate(unittest.TestCase):
         self.assert_interval_matches("s1", "s2", "(0, 2]")
         self.assert_interval_matches("s2", "s1", "(0, 1]")
 
-        self.manager.update_automaton()
-
-        self.assert_interval_matches("s0", "s0", "[0, 0]")
-        self.assert_interval_matches("s1", "s0", "[0, 0]")
-        self.assert_interval_matches("s1", "s2", "(0, 2]")
-        self.assert_interval_matches("s2", "s1", "(0, 3]")
-
     def test_bounded_scenario(self):
         self.initialise_automaton("input/bounded_automaton.dot")
         self.assert_interval_matches("s0", "s0", "[0, 0]")

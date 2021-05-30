@@ -1,0 +1,8 @@
+digraph g {
+    rankdir=LR;
+    Qi[style=invis];
+    Q0[xlabel="<=200"];
+    Qi -> Q0;
+    Q0 -> Q1[label="+2"];
+    Q1 -> Q0[label="+2"];
+}

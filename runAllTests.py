@@ -6,7 +6,7 @@ from test.Automaton.TestLoopFinder import TestLoopFinder
 from test.Reach.TestIntervals import TestIntervals
 from test.Reach.TestNewReachConfiguration import TestNewReachConfiguration
 from test.Reach.TestPostUpdate import TestPostUpdate
-from test.Reach.TestLoopExpansions import TestLoopExpansion
+from test.Reach.TestLoopAcceleration import TestLoopAcceleration
 from test.Reach.TestIntervalUnion import TestIntervalUnion
 from test.Reach.TestFullScenarioWithoutParameters import TestFullScenarioWithoutParamters
 

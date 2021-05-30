@@ -101,10 +101,18 @@ class ReachManager:
         # track whether or not there is an actual step downwards
         # in case all infimums did not change this is not a downward acceleration
         decreased = False
+        negative_op = False
 
         for i in range(len(loop)):
             prev_node = loop[i]
             current_node = loop[(i + 1) % len(loop)]
+
+            # analyse the transition
+            # we work on the assumption that the edge must exist
+            # otherwise a loop could have not been discovered
+            op = self.automaton.get_edge_operation(prev_node, current_node)
+            if op.get_value() < 0:
+                negative_op = True
 
             # analyse the current interval
             reach = self.reaches[current_node]
@@ -130,17 +138,26 @@ class ReachManager:
                 decreased = True
 
             # do nothing in the case that the infimum remained the exact same
+            continue
 
-        return decreased
+        return decreased and negative_op
 
     def is_ready_for_up_acceleration(self, loop):
         # track whether or not there is an actual step upwards
         # in case all suprema did not change this is not an upward acceleration
         increased = False
+        positive_op = False
 
         for i in range(len(loop)):
             prev_node = loop[i]
             current_node = loop[(i + 1) % len(loop)]
+
+            # analyse the transition
+            # we work on the assumption that the edge must exist
+            # otherwise a loop could have not been discovered
+            op = self.automaton.get_edge_operation(prev_node, current_node)
+            if op.get_value() > 0:
+                positive_op = True
 
             # analyse the current interval
             reach = self.reaches[current_node]
@@ -166,8 +183,9 @@ class ReachManager:
                 increased = True
 
             # do nothing in the case that the supremum remained the exact same
+            continue
 
-        return increased
+        return increased and positive_op
 
     def check_for_accelerations(self):
         for loop in self.loops:
@@ -337,11 +355,10 @@ class ReachManager:
                 continue
             self.update_state(state)
 
-        if self.debug:
-            print(self)
-
         self.check_for_accelerations()
 
+        if self.debug:
+            print(self)
 
         self.verify_end_condition()
         if self.finished:
@@ -371,14 +388,14 @@ class ReachManager:
                     else:
                         z = 0
 
+                    new_interval = deepcopy(sub_interval)
+
                     if z > 0:
-                        new_interval = Intervals(0, False, z, True)
-                        new_interval.add(sub_interval)
+                        addend = Intervals(0, False, z, True)
+                        new_interval.add(addend)
                     elif z < 0:
-                        new_interval = Intervals(z, True, 0, False)
-                        new_interval.add(sub_interval)
-                    else:
-                        new_interval = deepcopy(sub_interval)
+                        addend = Intervals(z, True, 0, False)
+                        new_interval.add(addend)
 
                     self.reaches[q].update_reach(p, new_interval)
                     self.reaches[q].rescale_reach(p, self.lower_bound, self.upper_bound)

@@ -234,7 +234,7 @@ class Intervals:
         return self.intervals[0].is_low_inclusive()
 
     def update_lower_bound_inclusive(self, inclusive):
-        self.intervals[-1].set_incl_low(inclusive)
+        self.intervals[0].set_incl_low(inclusive)
 
     def get_sup(self):
         return self.intervals[-1].get_high_bound()

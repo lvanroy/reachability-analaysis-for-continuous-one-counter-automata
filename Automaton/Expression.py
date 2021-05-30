@@ -19,8 +19,14 @@ class Expression:
 
     def get_value(self) -> int:
         if self.get_operation() == "-":
-            return -int(self.const)
-        return int(self.const)
+            try:
+                return -int(self.const)
+            except ValueError:
+                return -self.const
+        try:
+            return int(self.const)
+        except ValueError:
+            return self.const
 
     def get_operation(self):
         return self.op_to_string[self.op]
