@@ -16,6 +16,7 @@ from test.Equations.TestIntersection import TestIntersection
 from test.Equations.TestOverlaps import TestOverlaps
 from test.Equations.TestNoOverlaps import TestNoOverlaps
 from test.Equations.TestFullAnalysis import TestFullAnalysis
+from test.Equations.TestParitallySatisfiable import TestPartiallySatisfiable
 
 if __name__ == '__main__':
     unittest.main()

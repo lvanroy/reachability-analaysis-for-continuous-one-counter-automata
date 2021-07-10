@@ -35,69 +35,62 @@ class TestFullAnalysis(unittest.TestCase):
         self.eq_solver.add_initial_condition()
         self.eq_solver.add_sequential_condition()
 
-    def print_model(self):
-        model = self.solver.model()
-        nodes = self.eq_solver.nodes
-        conditions = self.eq_solver.selected_conditions
-        transitions = self.eq_solver.transitions
-        intervals = self.eq_solver.intervals
-        m = self.eq_solver.m
+    def print(self):
+        if self.solver.check() == sat:
+            m = self.solver.model()
 
-        print("m = {}".format(model[m]))
+            condition_to_string = {
+                0: ">=",
+                1: "<=",
+                2: "==",
+                3: "no condition"
+            }
 
-        print("\ntransitions:")
-        for i in range(len(nodes)):
-            print("{}, {}, {} with condition {} {}".format(
-                nodes[model[transitions[i * 3]].as_long()],
-                model[transitions[(i * 3) + 1]],
-                nodes[model[transitions[(i * 3) + 2]].as_long()],
-                model[conditions[(i * 2)]],
-                model[conditions[(i * 2) + 1]]
-            ))
+            print("m = {}".format(m[self.eq_solver.m]))
 
-        print("\nintervals:")
-        for r in range(model[m].as_long() + 2):
-            interval_offset = (len(nodes) + 1) * 4 * r
-            print("Round {}".format(r))
-            for j in range(model[m].as_long() + 2):
-                start_index = interval_offset + j * 4
-                b = intervals[start_index]
-                t = intervals[start_index + 1]
-                i_l = intervals[start_index + 2]
-                i_h = intervals[start_index + 2]
-                print("s{}= [{}, {}, {}, {}]".format(
-                    j,
-                    model[b].as_long(),
-                    model[t].as_long(),
-                    model[i_l].as_long(),
-                    model[i_h].as_long()
+            print("\nparameters:")
+            for val in self.eq_solver.parameters:
+                print("{} = {}".format(val, m[self.eq_solver.parameters[val]]))
+
+            print("\ntransitions:")
+            for i in range(len(self.eq_solver.nodes)-1):
+                print("{}, {}, {}".format(
+                    self.eq_solver.nodes[m[self.eq_solver.transitions[i * 3]].as_long()],
+                    m[self.eq_solver.transitions[(i * 3) + 1]],
+                    self.eq_solver.nodes[m[self.eq_solver.transitions[(i * 3) + 2]].as_long()]
                 ))
+                condition = condition_to_string[m[self.eq_solver.selected_conditions[i * 2]].as_long()]
+                if condition == "no condition":
+                    print("no end condition")
+                else:
+                    print("end cond: {} {}".format(
+                        condition,
+                        m[self.eq_solver.selected_conditions[(i * 2) + 1]].as_long()
+                    ))
 
-        print("\naddends:")
-        for i in range(0, len(self.eq_solver.addends), 4):
-            b = model[self.eq_solver.addends[i]]
-            t = model[self.eq_solver.addends[i + 1]]
-            i_l = model[self.eq_solver.addends[i + 2]]
-            i_h = model[self.eq_solver.addends[i + 3]]
-            if b is not None:
-                print("{}: [{}, {}, {}, {}]".format(self.eq_solver.addends[i],
-                                                    b.as_long(),
-                                                    t.as_long(),
-                                                    i_l.as_long(),
-                                                    i_h.as_long()))
-
-        print("\nys:")
-        for i in range(0, len(self.eq_solver.y), 4):
-            b = model[self.eq_solver.y[i]]
-            t = model[self.eq_solver.y[i + 1]]
-            i_l = model[self.eq_solver.y[i + 2]]
-            i_h = model[self.eq_solver.y[i + 3]]
-            if b is not None:
-                print("{}: [{}, {}, {}, {}]".format(self.eq_solver.y[i],
-                                                    b.as_long(),
-                                                    t.as_long(),
-                                                    i_l.as_long(),
-                                                    i_h.as_long()))
+            print("\nintervals:")
+            for r in range(len(self.eq_solver.nodes)):
+                interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * r
+                print("Round {}".format(r))
+                for j in range(len(self.eq_solver.nodes)):
+                    start_index = interval_offset + j * 4
+                    b = self.eq_solver.intervals[start_index]
+                    t = self.eq_solver.intervals[start_index + 1]
+                    i_l = self.eq_solver.intervals[start_index + 2]
+                    i_h = self.eq_solver.intervals[start_index + 2]
+                    if m[b] is None or m[t] is None:
+                        print("s{} = None".format(j))
+                        continue
+                    print("s{}= [{}, {}, {}, {}]".format(
+                        j,
+                        m[b].as_long(),
+                        m[t].as_long(),
+                        m[i_l].as_long(),
+                        m[i_h].as_long()
+                    ))
+        else:
+            print("No solution found")
+        print("===========")
 
     def verify_interval_matches(self, interval, index, b_ex, t_ex, il_ex, ih_ex):
         interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * interval
@@ -260,9 +253,37 @@ class TestFullAnalysis(unittest.TestCase):
 
         self.analyze()
 
-        self.solver.push()
         self.eq_solver.add_final_condition("Q8")
         self.assertEqual(self.solver.check(), sat)
         m = self.solver.model()[self.eq_solver.m].as_long()
         self.verify_interval_matches(m, m, 5, 5, 1, 1)
 
+    def test_multi_path(self):
+        self.create_solver("input/multi_path.dot")
+
+        self.analyze()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("s1")
+        self.assertEqual(self.solver.check(), sat)
+        self.solver.pop()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("s2")
+        self.assertEqual(self.solver.check(), sat)
+        self.solver.pop()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("s3")
+        self.assertEqual(self.solver.check(), unsat)
+        self.solver.pop()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("s4")
+        self.assertEqual(self.solver.check(), sat)
+        self.solver.pop()
+
+        self.solver.push()
+        self.eq_solver.add_final_condition("s5")
+        self.assertEqual(self.solver.check(), unsat)
+        self.solver.pop()

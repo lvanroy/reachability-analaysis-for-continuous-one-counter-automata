@@ -127,7 +127,7 @@ class EquationSolver:
         # create a sequence of transitions
         # each transition is a sequence of integers
         # format: [p, z, q]
-        for i in range(len(self.nodes)):
+        for i in range(len(self.nodes) - 1):
             transition = IntVector('t{}'.format(i), 3)
             condition = IntVector('c{}'.format(i), 2)
             or_arguments = list()
@@ -153,6 +153,52 @@ class EquationSolver:
             self.transitions += transition
             self.selected_conditions += condition
 
+    def build_intervals(self):
+        # initialise all intervals
+        for r in range(len(self.nodes)+1):
+            for n in range(len(self.nodes)):
+                self.intervals += self.generate_interval(r, n)
+
+        for i in range(len(self.nodes)):
+            base = i * 4
+            if i == 0:
+                initial_value = self.automaton.get_initial_value()
+                self.s.add(self.intervals[base] == initial_value)
+                self.s.add(self.intervals[base + 1] == initial_value)
+                self.s.add(self.intervals[base + 2] == 1)
+                self.s.add(self.intervals[base + 3] == 1)
+            else:
+                self.s.add(self.intervals[base] == 0)
+                self.s.add(self.intervals[base + 1] == 0)
+                self.s.add(self.intervals[base + 2] == 0)
+                self.s.add(self.intervals[base + 3] == 0)
+
+        # define the evolution of the intervals
+        for it in range(len(self.nodes) - 1):
+            for interval in range(len(self.nodes)):
+                if it + 1 == interval:
+                    self.update_interval(it)
+                else:
+                    base = it * (len(self.nodes) + 1) * 4 + interval * 4
+                    target = base + (len(self.nodes) + 1) * 4
+                    start_interval = self.intervals[base: base + 4]
+                    target_interval = self.intervals[target: target + 4]
+                    expr = self.assign(target_interval,
+                                       start_interval[0],
+                                       start_interval[1],
+                                       start_interval[2],
+                                       start_interval[3])
+                    self.s.add(And(expr))
+
+    @staticmethod
+    def generate_interval(r, node_index):
+        interval = list()
+        interval.append(Int("i_{}_{}_b".format(r, node_index)))
+        interval.append(Int("i_{}_{}_t".format(r, node_index)))
+        interval.append(Int("i_{}_{}_i_l".format(r, node_index)))
+        interval.append(Int("i_{}_{}_i_u".format(r, node_index)))
+        return interval
+
     def update_interval(self, it):
         z = self.transitions[it * 3 + 1]
 
@@ -163,6 +209,8 @@ class EquationSolver:
         start_interval = self.intervals[base: base + 4]
         end_interval = self.intervals[end: end + 4]
         target_interval = self.intervals[target: target + 4]
+
+        update_condition = list()
 
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
@@ -211,7 +259,7 @@ class EquationSolver:
                                 start_interval[3])
         or_arguments.append(And(and_args))
 
-        self.s.add(Or(or_arguments))
+        update_condition.append(Or(or_arguments))
 
         # the sum is now stored in y
         # intersect this with the automaton bound
@@ -232,9 +280,13 @@ class EquationSolver:
         vec_name = 'ab{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
         interval = IntVector(vec_name, 4)
-        self.s.add(And(self.assign(interval,
-                                   low, high,
-                                   incl_low, incl_high)))
+        update_condition.append(
+            And(
+                self.assign(interval,
+                            low, high,
+                            incl_low, incl_high)
+            )
+        )
 
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
@@ -277,7 +329,7 @@ class EquationSolver:
             )
         )
 
-        self.s.add(Or(or_arguments))
+        update_condition.append(Or(or_arguments))
 
         vec_name = 'y{}'.format(self.auxiliary_counter)
         self.auxiliary_counter += 1
@@ -291,62 +343,21 @@ class EquationSolver:
 
         # ensure that the result is not empty
         # if this is the case it means that the node is not reachable
+        update_condition.append(Or(
+            self.is_not_empty(
+                target_interval[0],
+                target_interval[1],
+                target_interval[2],
+                target_interval[3]
+            )
+        ))
+
         self.s.add(
             Or(
-                self.is_not_empty(
-                    target_interval[0],
-                    target_interval[1],
-                    target_interval[2],
-                    target_interval[3]
-                )
+                And(update_condition),
+                it > self.m
             )
         )
-
-    def build_intervals(self):
-        # initialise all intervals
-        for r in range(len(self.nodes) + 1):
-            for n in range(len(self.nodes) + 1):
-                self.intervals += self.generate_interval(r, n)
-
-        for i in range(len(self.nodes) + 1):
-            base = i * 4
-            if i == 0:
-                initial_value = self.automaton.get_initial_value()
-                self.s.add(self.intervals[base] == initial_value)
-                self.s.add(self.intervals[base + 1] == initial_value)
-                self.s.add(self.intervals[base + 2] == 1)
-                self.s.add(self.intervals[base + 3] == 1)
-            else:
-                self.s.add(self.intervals[base] == 0)
-                self.s.add(self.intervals[base + 1] == 0)
-                self.s.add(self.intervals[base + 2] == 0)
-                self.s.add(self.intervals[base + 3] == 0)
-
-        # define the evolution of the intervals
-        for it in range(len(self.nodes)):
-            for interval in range(len(self.nodes) + 1):
-                if it + 1 == interval:
-                    self.update_interval(it)
-                else:
-                    base = it * (len(self.nodes) + 1) * 4 + interval * 4
-                    target = base + (len(self.nodes) + 1) * 4
-                    start_interval = self.intervals[base: base + 4]
-                    target_interval = self.intervals[target: target + 4]
-                    expr = self.assign(target_interval,
-                                       start_interval[0],
-                                       start_interval[1],
-                                       start_interval[2],
-                                       start_interval[3])
-                    self.s.add(And(expr))
-
-    @staticmethod
-    def generate_interval(r, node_index):
-        interval = list()
-        interval.append(Int("i_{}_{}_b".format(r, node_index)))
-        interval.append(Int("i_{}_{}_t".format(r, node_index)))
-        interval.append(Int("i_{}_{}_i_l".format(r, node_index)))
-        interval.append(Int("i_{}_{}_i_u".format(r, node_index)))
-        return interval
 
     def add_vec(self, start, addend, target):
         arguments = list()
@@ -1041,8 +1052,7 @@ class EquationSolver:
         for i in range(2, len(self.transitions) - 3, 3):
             end_node = self.transitions[i]
             start_node = self.transitions[i + 1]
-            arg = Or(end_node == start_node, (i - 2) / 3 >= self.m)
-            and_arguments.append(arg)
+            and_arguments.append(Or(end_node == start_node, (i - 2) / 3 >= self.m))
         self.s.add(And(and_arguments))
 
     def add_final_condition(self, goal):

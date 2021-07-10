@@ -1028,7 +1028,7 @@ In our approach this allows us to traverse the differences between the previous 
 		\hline
 	\end{tabular}
 	\centering
-	\caption{Decision table for the scenario in which a guest occupies a new cell without acceleration.}
+	\caption{Resulting interval configuration in case acceleration is not applied.}
 	\label{table:table_example_no_acc}
 \end{table}
 
@@ -1049,7 +1049,7 @@ Applying our previously described steps, we will find that node $q_2$ is closest
 		\hline
 	\end{tabular}
 	\centering
-	\caption{Decision table for the scenario in which a guest occupies a new cell with acceleration.}
+	\caption{Resulting interval configuration after acceleration.}
 	\label{table:table_example_acc}
 \end{table}
 
@@ -1085,56 +1085,457 @@ This algorithm will always terminate. Given that there are no loops it will triv
 
 It is possible that further evaluations require bounds to be recomputed. For example, given the automaton described in Figure \ref{fig:example_recomputation_of_bounds}. In this automaton the loop between $q_0$ and $q_1$ will be expanded first. The second loop will still get evaluated and the lower bound of $q_0$ to $q_1$ will keep on decreasing, until the second loop will get accelerated, at which point a fix point will be achieved and the evaluation will end. This will always be the case given that we will always have a finite amount of nodes which will thus result in a finite amount of loops which will all accelerate at some point. The effects of said acceleration might need a few more evaluations to propagate their effect all across the automaton but once it does the evaluation will end. We can therefore conclude that the algorithm can never run indefinitely.
 
-A mathematical proof for the the theoretical algorithm on which this approach is based is given in the paper by Michael Blondin et al. \cite{blondin2021continuous}. This paper will proof that this algorithm will always terminate, and will do so in at most $(4\vert Q\vert ² + 5\vert Q\vert)$ accelerations.
+A mathematical proof for the the theoretical algorithm on which this approach is based is given in the paper by Michael Blondin et al. \cite{blondin2021continuous}. This paper will prove that this algorithm will always terminate, and will do so in at most $(4\vert Q\vert ² + 5\vert Q\vert)$ accelerations.
 
-\begin{landscape}
-	\begin{figure}
-		\centering
-		\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
-			\tikzstyle{center} = [draw=black, rectangle, text width=5.8em]
-			\tikzstyle{arrow} = [thick,->,>=stealth]
-			
-			\node[center]	at (0, 0) 		(q0) 	{Intersect \\input: x,y \\output: z};
-			
-			\node[center]	at (3, 6) 		(q1) 	{x is empty};
-			\node[center]	at (3, 5)		(q2)	{y is empty};
-			\node[center]	at (3, 2)		(q5)	{$x_\bot == 2$};
-			\node[center]	at (3, 2)		(q5)	{$x_\bot == 2$};
-			
-			\node[center]	at (7, 6)		(q3)	{$z == [0, 0, 1, 1]$};
-			\node[center]	at (7, 5)		(q4)	{$z == [0, 0, 1, 1]$};
-			\node[center]	at (7, 4)		(q6)	{$y_\bot == 2$};
-			\node[center] 	at (7, 3)		(q8)	{$y_b <= x_t$};
-			\node[center] 	at (7, 1)		(q11)	{$y_b > x_t$};
-			\node[center]	at (7, 0)		(q13)	{$x_\top == 2$};
-			
-			\node[center]	at (11, 4)		(q7)	{$z_\bot == 2$};
-			\node[center] 	at (11, 3)		(q9)	{$z_b == y_b$};
-			\node[center] 	at (11, 2)		(q10)	{$z_\bot == x_\bot$};
-			\node[center]	at (11, 1)		(q12)	{$z == [0, 0, 1, 1]$};
-			\node[center]	at (11, 0)		(q14)	{$z == y$};
-					
-			\draw [arrow] (q0) |- (q1);
-			\draw [arrow] (q0) |- (q2);
-			\draw [arrow] (q0) |- (q5);
-			\draw [arrow] (q1) |- (q3);
-			\draw [arrow] (q2) |- (q4);
-			\draw [arrow] (q5) |- (q6);
-			\draw [arrow] (q6) |- (q7);
-			\draw [arrow] (q5) |- (q8);
-			\draw [arrow] (q8) |- (q9);
-			\draw [arrow] (q8) |- (q10);
-			\draw [arrow] (q5) |- (q11);
-			\draw [arrow] (q11) |- (q12);
-			\draw [arrow] (q5) |- (q13);
-			\draw [arrow] (q13) |- (q14);
-		\end{tikzpicture}
-	\end{figure}
-\end{landscape}
+\subsection{Reachabiltiy of parametric COCA}
+Throughout this section we will give an overview of how the reachability for parametric continuous one counter automata can be analysed. This will be done using the approach that was theoretically described by Michael Blondin et al. \cite{blondin2021continuous}. This paper will both give a practical approach as well as an application, intended as prove that it works in practise.
 
+In this approach we will attempt to fully convert the automaton as well as the reachability problem to a SAT problem. This can then automatically be resolved by existing solutions which will simply traverse all possible variable assignments until a solution is found.
+
+\subsubsection{Transition initialization}
+During initialization we will start by converting all transitions that are defined within the given automaton to their equivalent equations. All transitions are represented by three variables. Two variables are used to represent that start and end point of the transition and the third will represent the operation associated with the transition. The operation will simply be an integer value as we limited our automata to only allow + and - operations. This means that an integer can fully cover every possible operation that can be performed on an edge. Note that there is no need to cover conditions on edges as we resolved all inconsistencies regarding transitions with conditional labels in our automaton input phase. This value can also be a parameter in which case our SAT solver will be allowed to choose any value for which this evaluation would eventually evaluate to true. The signs are simply added to the variable and no further limitations are emplaced upon the variable other than the requirement that these variables must be integers.
+
+Alongside the transitions we will also initialise the conditions of the nodes in which the transitions end. These are important as these decide whether or not a transition can be taken. Given that we have a transition with an operation equal to $+1$, a current counter value equal to just $0$ and an end node with a condition equal to $\le -1$ we are not allowed to take this edge. Each condition will be represented by two variables, one to indicate the condition type and a second to indicate the value against which it is compared. Note that we will both allow this value to be parametric or a constant. The condition type can have three different values, $0$ will be used to represent the $\ge$ operation, $1$ will be used to represent $\le$, 2 will represent $=$ and finally $3$ will be used in case there is no condition associated with the end node.
+
+Finally, now that we have converted all this information, we can start to model the transition sequences. To do this we will create an $or$ chain in which every option is represented by a 5 variable $and$ statement. The $and$ will represent the chosen transition, represented by 3 variables and the condition of the end node, represented by 2 variables. The assignment of values to unknowns will be done by equality conditions thus requiring that a variable is equal to the expected value in case we would like this transition to be taken. Every transition will be converted to an $and$ and subsequently added as an option to the big $or$. This $or$ will be generated n times, where n represents the total number of nodes. This allows us to easily prove whether or not a node is reachable directly, without considering any loops. 
+
+\begin{figure}[b!]%
+	\centering
+	\begin{tikzpicture}[auto, >=latex, node distance = 1 cm]
+		\tikzstyle{round} = [thick, draw=black, circle, font=\small]
+		\tikzstyle{invis} = [draw=none, font=\small]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[round] 	at (0, 0) 		(q0) 	{$q_0$};
+		\node[round] 	at (3, 0)		(q1) 	{$q_1$};
+		\node[round] 	at (6, 0)		(q2) 	{$q_2$};
+		\node[invis]	at (7, 0.5)		(q4)	{$\leq b$};
+		\node[round] 	at (9, 0)		(q3) 	{$q_3$};
+		\node[invis]	at (10, 0.5)	(q4)	{$\geq 100$};
+		
+		\path[->]
+		(q0) 	edge 					node 					{$+1$}	(q1)
+		(q1) 	edge 					node 					{$+a$}	(q2)
+		(q2)	edge 					node					{}		(q3);
+	\end{tikzpicture}
+	\caption{Example of a parametric guarded automaton on which the SAT solver can be applied.}
+	\label{fig:example_param_guarded}
+\end{figure}
+
+In the example given in Figure \ref{fig:example_param_guarded} we can see an example automaton for which the preceding reachability analysis algorithm would not be suitable. It has two parameters being the parameter $a$ used in an addition on the centre transition and the variable b, used as a condition on the $q_2$ node after said transition.
+
+We would start the analyse by storing the different values associated with each transition. This would result in the table below where the index represents the place of the edge within the graph, starting from left to right.
+
+\begin{table}[h]
+	\begin{tabular}{ |c|c|c|c|c|c| }
+		\hline
+		index				& start 		& op			& end			& cond type				& cond value\\
+		\hline
+		0					& $q_0$ 		& $+1$			& $q_1$ 		& $3$						& $none$	\\
+		1					& $q_1$ 		& $+a$			& $q_2$ 		& $1$						& $b$ 		\\
+		2					& $q_2$	 		& $none$ 		& $q_3$ 		& $0$						& $100$  \\
+		\hline
+	\end{tabular}
+	\centering
+	\caption{Resulting configuration for the different transitions.}
+	\label{table:table_example_transition mapping}
+\end{table}
+
+To convert this table to a option within the bigger or we use an and which uses the format given below. In this format i represent the step of the traversal, so in other words $i = 0$ would imply that this is the firs transition we take, $i = 1$ the second transition and so on. For each i the 5 variables shown below will constantly be reused as they must specifically match one of the transitions. The right hand sides of the operations will be filled in with the respective values of each transition. So we will have a chain of $and$ statements for the first transition, one for the second and one for the third. 
+
+\begin{gather*}
+	t_{i_0} = start \land t_{i_1} = op \land t_{i_2} = end \land c_{i_0} = cond\;type \land c_{i_0} = cond\;value
+\end{gather*}
+
+For the continuation of this example consider $SELECT(t_j, i)$ to represent the filled in formula for the j-th transition and the i-th step. This new notation allows us to generate the formula below which shows the formula that describes all options from which the SAT solver can choose for the first transition.
+
+\begin{gather*}
+	SELECT(t_0, 0) \lor SELECT(t_1, 0) \lor SELECT(t_2, 0)
+\end{gather*}
+
+Now that we have the formula for the first transition, all that is left is to consider the selection of all transitions rather than just the first. To simplify the notation, assume that the formula above is represented by $STEP(i)$ where i indicates the step we are generating the formula for. This allows us to construct the final sequence below in which we will have a finished formula in which we need to select one transition per step in order to make it evaluate to true. The variables which are used as left hand sides in the equations will all have a value and will be used for comparisons and verifications in the remainder of this evaluation. Note that we only considered three different steps, which is equal to the number of nodes minus 1. If we are not considering any loops the algorithm must be able to terminate in that many steps or there is no solution at all. It is very important to limit the number of equations as a large amount of equations can greatly increase the solve time of the SAT solver. 
+
+\begin{gather*}
+	STEP(0) \land STEP(1) \land STEP(2)
+\end{gather*}
+
+\subsubsection{Interval initialization}
+The intervals used in the previous section will be converted to equations by using 4 different variables. The first  two variables will represent the lower and upper bound using their actual integer values. The two last variables will represent whether or not the upper and lower bound are inclusive where a 1 implies inclusive and a 0 implies not inclusive. A value of 2 implies that its corresponding limit is equal to infinity.
+
+At initialization we will start by defining and storing the variables for each of the interval we will encounter. This means $4 * n$ variables per step and $n$ steps, with n representing the total number of nodes. 
+
+During the initialization we will also assign values to the first step, being a $[0, 0]$ interval for the first node (represented by the values $0, 0, 1, 1$) or a $(0, 0)$ interval (i.e. an empty interval) for all other nodes. This assignment will be done using the equation below where i represents the step and j represents the node, for this example the values for the assignment of the initial node was used.
+
+\begin{gather*}
+	v_{i_{j_0}} = 0 \land v_{i_{j_1}} = 0 \land v_{i_{j_2}} = 1 \land v_{i_{j_3}} = 1
+\end{gather*}
+
+\subsubsection{Defined the end goal}
+We want to determine the reachability of a certain node within an automaton. It is therefore vital that we specifically deduce whether or not said node is indeed reachable which can be done by requiring that there is a transition with an end node $t_{i_2}$ equal to the desired node $g$ for which the equation can be seen below. Note that we also define a variable n equal to the current step i. This is done because later on we want to disable certain requirements in case the goal node has already been reached.
+
+\begin{gather*}
+	t_{i_2} = g \land n = i
+\end{gather*}
+
+Using the equation above we can simply define the end condition by saying that for one of the transitions the above must hold, as can be seen below.
+
+\begin{gather*}
+	(t_{0_2} = g \land n = 0) \lor (t_{1_2} = g \land n = 1) \lor (t_{2_2} = g \land n = 2) \lor ...
+\end{gather*}
+
+\subsubsection{Define the start of the path}
+We need to add a constraint that requires us to start from the initial node. Otherwise it might be possible for us to take transitions somewhere completely random within our automaton as a starting point which is not acceptable. This constraint will simply require the $t_{0_0}$ variable, representing the start of the first selected transition, to be equal to the initial node.
+
+\begin{gather*}
+	t_{0_0} = \text{\textless initial node\textgreater}
+\end{gather*}
+
+\subsubsection{Sequential transitions}
+The last condition we need to enforce is the need for the transitions to end where the next one starts. This is done by enforcing the condition below for every step in the evaluation. 
+
+\begin{gather*}
+	t_{i_2} = t_{i+1_0}
+\end{gather*}
+
+\subsubsection{msum}
+The msum function is used to determine the inclusiveness of the bounds in the interval addition. The msum function is defined as:
+
+\begin{gather*}
+msum(i, j) = 2 \qquad \qquad if \; max(i,j) = 2 \\
+msum(i, j) = min(i, j) \quad \qquad \quad otherwise \qquad \qquad \qquad
+\end{gather*}
+
+\subsubsection{Emptiness of intervals}
+We need to be able to verify whether or not an interval is empty in order to create base cases for future operations. An interval is considered to be empty if both bounds are not inclusive and the boundary values are equal to each other as can be seen in the formulae below. Note that we do not check whether or not the lower bound is higher than the higher bound (in which case it would also be empty). This is not needed as such a situation can never be reached. All transitions can only expand intervals and never reduce due to us allowing transitions to be taken partially.
+
+\begin{gather*}
+	x_2 = 0 \\
+	x_3 = 0 \\
+	x_0 = x_1
+\end{gather*}
+
+\subsubsection{Interval addition}
+The addition of intervals will be split in three different cases as can be seen in the graph below. In case either operand is an empty interval the resulting interval will trivially equal the other interval. In case they are both not empty we compute the sum by taking the addition of the lower and upper bound of the X and Y intervals and the msum to compute whether or not the resulting bounds are inclusive.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
+		\tikzstyle{small} = [draw=black, rectangle]
+		\tikzstyle{center} = [draw=black, rectangle, text width=8em, align=center]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[center]	at (-0.5, 0) 	(q0) 	{Z = X + Y};
+		
+		\node[center]	at (2, -1) 		(q1) 	{X is empty};
+		\node[center]	at (2, -2)		(q2)	{Y is empty};
+		\node[center]	at (2, -3)		(q3)	{X,Y is not empty};
+		
+		\node[center] 	at (6.5, -1)	(q4)	{$Z = Y$};
+		\node[center] 	at (6.5, -2)	(q5)	{$Z = X$};
+		\node[center] 	at (6.5, -3.6)	(q6)	{$Z_0 = X_0 + Y_0$ \\
+												 $Z_1 = X_1 + Y_1$ \\
+												 $Z_2 =$ msum$(X_2 + Y_2)$ \\
+												 $Z_3 =$ msum$(X_3 + Y_3)$};
+		
+		\draw [arrow] (q0) |- (q1);
+		\draw [arrow] (q0) |- (q2);
+		\draw [arrow] (q0) |- (q3);
+		
+		\draw [arrow] (q1) |- (q4);
+		\draw [arrow] (q2) |- (q5);
+		\draw [arrow] (q3) |- (q6);
+	\end{tikzpicture}
+\end{figure}
+
+\subsubsection{Interval overlap}
+One important relationship between two intervals is overlap as it directly helps to simplify the generation of unions and intersections of intervals. This can be computed by verifying whether or not any of the endpoint of one interval is within the other interval. Note that it is important to specifically look at the third and fourth variable part of the interval to also consider infinite bounds.
+
+\begin{figure}[h]
+	\centering
+	\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
+		\tikzstyle{small} = [draw=black, rectangle]
+		\tikzstyle{center} = [draw=black, rectangle, text width=8em, align=center]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[center]	at (-0.5, 0) 	(q0) 	{X overlaps Y};
+		
+		\node[center]	at (2, -1)		(q3)	{$X_0$ inside Y};
+		\node[center]	at (2, -2)		(q4)	{$X_1$ inside Y};
+		\node[center]	at (2, -3)		(q5)	{$Y_0$ inside X};
+		\node[center]	at (2, -4)		(q6)	{$Y_1$ inside X};
+		
+		\draw [arrow] (q0) |- (q3);
+		\draw [arrow] (q0) |- (q4);
+		\draw [arrow] (q0) |- (q5);
+		\draw [arrow] (q0) |- (q6);
+	\end{tikzpicture}
+\end{figure}
+
+
+\subsubsection{Interval intersection}
+The entirety of the intersection operation is visualised in Image \ref{fig:intersection} below. In this image all nodes where multiple lines leave are assumed to imply $or$ operations between all end nodes. This holds with the exception of the coloured nodes where nodes of the same colour represent an $or$ operation which will then be combined in a bigger $and$.
+
+For the intersection of intervals we will first of all consider the cases where the result is an empty vector. This can either occur when there is no overlap or when X or Y is empty. In any of these cases we can simply assign an empty vector to Z, being the resulting interval.
+
+If this is not the case we will separately evaluate both borders of the interval. The lower border is represented by the red colour and the upper border by the blue colour within Image \ref{fig:intersection}. 
+
+For both sides it hold that if either X or Y goes to infinity in that direction than Z will have the boundary values of the other interval. For example if X would go to infinity on the lower bound then the value of Z will be equal to the value of Y for both the lower bound value and whether or not this bound is inclusive.
+
+\begin{figure}
+	\centering
+	\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
+		\tikzstyle{center} = [draw=black, rectangle, text width=5.5em, align=center]
+		\tikzstyle{centert} = [draw=black, rectangle, text width=5.5em, align=center, text=red]
+		\tikzstyle{centerb} = [draw=black, rectangle, text width=5.5em, align=center, text=blue]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[center]	at (0, 8) 		(q0) 	{$Z = X \cap Y$};
+		\node[center]	at (0, 3.8)		(q4)	{else};
+		
+		\node[center]	at (1.6, 7)		(q1)	{no overlap};
+		\node[center]	at (1.6, 6) 	(q2) 	{X is empty};
+		\node[center]	at (1.6, 5)		(q3)	{Y is empty};
+		
+		\node[centert]	at (1.6, 2.4)	(q6)	{$X_2 \ne 2$ $\land$ \\ $X_2 \ne 2$};
+		\node[centerb]	at (1.6, -5.2)	(q7)	{$X_3 \ne 2$ $\land$ \\ $X_3 \ne 2$};
+		
+		\node[center]	at (4.5, 7)		(q9)	{$Z = [0, 0, 1, 1]$};
+		\node[center]	at (4.5, 6)		(q10)	{$Z = [0, 0, 1, 1]$};
+		\node[center]	at (4.5, 5)		(q11)	{$Z = [0, 0, 1, 1]$};
+		\node[centert]	at (4.5, 3.8)	(q12)	{$X_2/Y_2 = 2$};
+		\node[center]	at (4.5, 2.4)	(q14)	{$X_0 < Y_0$};
+		\node[center]	at (4.5, 1.1)	(q15)	{$Y_0 < X_0$};
+		\node[center]	at (4.5, -0.2)	(q16)	{$X_0 = Y_0$};
+		\node[centerb]	at (4.5, -3.9)	(q13)	{$X_3/Y_3 = 2$};
+		\node[center]	at (4.5, -5.2)	(q17)	{$X_1 > Y_1$};
+		\node[center]	at (4.5, -6.5)	(q18)	{$Y_1 > X_1$};
+		\node[center]	at (4.5, -7.6)	(q19)	{$X_1 = Y_1$};
+		
+		\node[center]	at (7.5, 3.8)		(q32)	{$Z_0 = X_0/Y_0$ $\land$ \\ $Z_2 = X_2/Y_2$};
+		\node[center]	at (7.5, 2.4)		(q22)	{$Z_0 = Y_0$ $\land$ \\ $Z_2 = Y_2$};
+		\node[center]	at (7.5, 1.1)		(q23)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = X_2$};
+		\node[center]	at (7.5, -0.2)		(q24)	{$X_2 = 0$};
+		\node[center]	at (7.5, -1.5)		(q25)	{$Y_2 = 0$};
+		\node[center]	at (7.5, -2.8)		(q26)	{$X_2 = Y_2 = 1$};
+		\node[center]	at (7.5, -3.9)		(q33)	{$Z_1 = X_1/Y_1$ $\land$ \\ $Z_3 = X_3/Y_3$};
+		\node[center]	at (7.5, -5.2)		(q27)	{$Z_1 = Y_1$ $\land$ \\ $Z_3 = Y_3$};
+		\node[center]	at (7.5, -6.5)		(q28)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = X_3$};
+		\node[center]	at (7.5, -7.6)		(q29)	{$X_3 = 0$};
+		\node[center]	at (7.5, -8.9)		(q30)	{$Y_3 = 0$};
+		\node[center]	at (7.5, -10.2)		(q31)	{$X_3 = Y_3 = 1$};
+		
+		\node[center]	at (10.5, -0.2)	 (q35)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = 0$};
+		\node[center]	at (10.5, -1.5)	 (q36)	{$Z_0 = Y_0$ $\land$ \\ $Z_2 = 0$};
+		\node[center]	at (10.5, -2.8)	 (q37)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = 1$};
+		\node[center]	at (10.5, -7.6)	 (q38)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = 0$};
+		\node[center]	at (10.5, -8.9)	 (q39)	{$Z_1 = Y_1$ $\land$ \\ $Z_3 = 0$};
+		\node[center]	at (10.5, -10.2) (q40)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = 1$};
+		
+		\draw [arrow] (q0)  -- (q4);
+		
+		\draw [arrow] (q0)  |- (q1);
+		\draw [arrow] (q0)  |- (q2);
+		\draw [arrow] (q0)  |- (q3);
+		
+		\draw [arrow] (q4)  |- (q6);
+		\draw [arrow] (q4)  |- (q7);
+		
+		\draw [arrow] (q1)  |- (q9);
+		\draw [arrow] (q2)  |- (q10);
+		\draw [arrow] (q3)  |- (q11);
+		\draw [arrow] (q4)  |- (q12);
+		\draw [arrow] (q4)  |- (q13);
+		\draw [arrow] (q6)  |- (q14);
+		\draw [arrow] (q6)  |- (q15);
+		\draw [arrow] (q6)  |- (q16);
+		\draw [arrow] (q7)  |- (q17);
+		\draw [arrow] (q7)  |- (q18);
+		\draw [arrow] (q7)  |- (q19);
+		
+		\draw [arrow] (q12) |- (q32);
+		\draw [arrow] (q13) |- (q33);
+		\draw [arrow] (q14) |- (q22);
+		\draw [arrow] (q15) |- (q23);
+		\draw [arrow] (q16) |- (q24);
+		\draw [arrow] (q16) |- (q25);
+		\draw [arrow] (q16) |- (q26);
+		\draw [arrow] (q17) |- (q27);
+		\draw [arrow] (q18) |- (q28);
+		\draw [arrow] (q19) |- (q29);
+		\draw [arrow] (q19) |- (q30);
+		\draw [arrow] (q19) |- (q31);
+		
+		\draw [arrow] (q24) |- (q35);
+		\draw [arrow] (q25) |- (q36);
+		\draw [arrow] (q26) |- (q37);
+		\draw [arrow] (q29) |- (q38);
+		\draw [arrow] (q30) |- (q39);
+		\draw [arrow] (q31) |- (q40);
+		
+	\end{tikzpicture}
+	\caption{Overview of the interval intersection operation.}
+	\label{fig:intersection}
+\end{figure}
+
+If neither X or Y goes to infinity we will look at whether or not either bound is further out than the other. If this is the case than the most inner side will be chosen to be the representative for that bound in Z. 
+
+If both bounds are equal then we look if they are both inclusive, if yes then Z will be inclusive too, if either one is not inclusive then Z will also be not inclusive for said bound. The value of Z will be equal to the bound of X and Y in any of these cases.
+
+\subsubsection{Interval union}
+The union operation is summarised in Figure \ref{fig:union} below. We can immediately see that this is very similar to the intersection in the sense that most of the conditional statements are the exact same. The first big difference lies in the fact that the case where there is no overlap is no longer considered. This is because firstly, considering there to be no overlap would imply that we need to support intervals with gaps. This would dramatically increase the number of variables we need and it was therefore not considered. This does not hurt our implementation in any way as it is impossible to ever obtain a split interval in case you consider every node to have one interval per preceding node, rather than one big interval. Furthermore it can never happen that we become a split interval in the case where there are no loops. We simply consider one path in which each node can only occur once, it can therefore only update the interval of each node once. A single update can never lead to multiple intervals considering that all restrictions simply restrict the bounds, and not filter out anything from the middle of the interval.
+
+Next we once again split the evaluation into two near identical evaluations being marked by the blue and red nodes. The red segment relates to the lower bound, the blue segment to the upper bound. In case either side goes to infinity for $X$ or $Y$, $Z$ will trivially go to infinity too. In case it does not go to infinity we will select the one closes to the bounds. Finally if both bounds are equal we will by default set the boundary value equal to boundary value of $X$ and $Y$ and make it inclusive if either $X$ or $Y$ is inclusive and exclusive otherwise.
+
+\begin{figure}
+	\centering
+	\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
+		\tikzstyle{center} = [draw=black, rectangle, text width=5.5em, align=center]
+		\tikzstyle{centert} = [draw=black, rectangle, text width=5.5em, align=center, text=red]
+		\tikzstyle{centerb} = [draw=black, rectangle, text width=5.5em, align=center, text=blue]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[center]	at (0, 7) 		(q0) 	{$Z = X \cup Y$};
+		\node[center]	at (0, 3.8)		(q4)	{else};
+		
+		\node[center]	at (1.6, 6) 	(q2) 	{X is empty};
+		\node[center]	at (1.6, 5)		(q3)	{Y is empty};
+		
+		\node[centert]	at (1.6, 2.4)	(q6)	{$X_2 \ne 2$ $\land$ \\ $X_2 \ne 2$};
+		\node[centerb]	at (1.6, -3.9)	(q7)	{$X_3 \ne 2$ $\land$ \\ $X_3 \ne 2$};
+		
+		\node[center]	at (4.5, 6)		(q10)	{$Z = Y$};
+		\node[center]	at (4.5, 5)		(q11)	{$Z = X$};
+		\node[centert]	at (4.5, 3.8)	(q12)	{$X_2/Y_2 = 2$};
+		\node[center]	at (4.5, 2.4)	(q14)	{$X_0 < Y_0$};
+		\node[center]	at (4.5, 1.1)	(q15)	{$Y_0 < X_0$};
+		\node[center]	at (4.5, -0.2)	(q16)	{$X_0 = Y_0$};
+		\node[centerb]	at (4.5, -2.6)	(q13)	{$X_3/Y_3 = 2$};
+		\node[center]	at (4.5, -3.9)	(q17)	{$X_1 > Y_1$};
+		\node[center]	at (4.5, -5.2)	(q18)	{$Y_1 > X_1$};
+		\node[center]	at (4.5, -6.5)	(q19)	{$X_1 = Y_1$};
+		
+		\node[center]	at (7.5, 3.8)		(q32)	{$Z_0 = 0$ $\land$ \\ $Z_2 = 2$};
+		\node[center]	at (7.5, 2.4)		(q22)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = X_2$};
+		\node[center]	at (7.5, 1.1)		(q23)	{$Z_0 = Y_0$ $\land$ \\ $Z_2 = Y_2$};
+		\node[center]	at (7.5, -0.2)		(q25)	{$X_2 = Y_2 = 0$};
+		\node[center]	at (7.5, -1.5)		(q26)	{$X_2/Y_2 = 1$};
+		\node[center]	at (7.5, -2.6)		(q33)	{$Z_1 = 0$ $\land$ \\ $Z_3 = 2$};
+		\node[center]	at (7.5, -3.9)		(q27)	{$Z_1 = Y_1$ $\land$ \\ $Z_3 = Y_3$};
+		\node[center]	at (7.5, -5.2)		(q28)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = X_3$};
+		\node[center]	at (7.5, -6.5)		(q30)	{$X_3 = Y_3 = 0$};
+		\node[center]	at (7.5, -7.8)		(q31)	{$X_3/Y_3 = 1$};
+		
+		\node[center]	at (10.5, -0.2)	 (q36)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = 0$};
+		\node[center]	at (10.5, -1.5)	 (q37)	{$Z_0 = X_0$ $\land$ \\ $Z_2 = 1$};
+		\node[center]	at (10.5, -6.5)	 (q39)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = 0$};
+		\node[center]	at (10.5, -7.8) (q40)	{$Z_1 = X_1$ $\land$ \\ $Z_3 = 1$};
+		
+		\draw [arrow] (q0)  -- (q4);
+		
+		\draw [arrow] (q0)  |- (q2);
+		\draw [arrow] (q0)  |- (q3);
+		
+		\draw [arrow] (q4)  |- (q6);
+		\draw [arrow] (q4)  |- (q7);
+		
+		\draw [arrow] (q2)  |- (q10);
+		\draw [arrow] (q3)  |- (q11);
+		\draw [arrow] (q4)  |- (q12);
+		\draw [arrow] (q4)  |- (q13);
+		\draw [arrow] (q6)  |- (q14);
+		\draw [arrow] (q6)  |- (q15);
+		\draw [arrow] (q6)  |- (q16);
+		\draw [arrow] (q7)  |- (q17);
+		\draw [arrow] (q7)  |- (q18);
+		\draw [arrow] (q7)  |- (q19);
+		
+		\draw [arrow] (q12) |- (q32);
+		\draw [arrow] (q13) |- (q33);
+		\draw [arrow] (q14) |- (q22);
+		\draw [arrow] (q15) |- (q23);
+		\draw [arrow] (q16) |- (q25);
+		\draw [arrow] (q16) |- (q26);
+		\draw [arrow] (q17) |- (q27);
+		\draw [arrow] (q18) |- (q28);
+		\draw [arrow] (q19) |- (q30);
+		\draw [arrow] (q19) |- (q31);
+		
+		\draw [arrow] (q25) |- (q36);
+		\draw [arrow] (q26) |- (q37);
+		\draw [arrow] (q30) |- (q39);
+		\draw [arrow] (q31) |- (q40);
+		
+	\end{tikzpicture}
+	\caption{Overview of the interval union operation.}
+	\label{fig:union}
+\end{figure}
+\subsubsection{Interval updates}
+The final component is the behaviour of the intervals after initialization. This process will be similar to the $succ$ function defined for non parametric COCA but now converted to equations. For the remainder of this section we will give the equations for a transition $(p, z, q)$.
+
+The first step will be to convert the operation of the current transition to an interval using the conversion rules below where $z$ represents the integer value of the transition operation. Notice that there is no case in which no label is present, this is because this will be automatically mapped to 0 which is needed as we will refer to this interval in further steps and it is thus required that it exists. In all further steps we will refer to this interval as $I_z$.
+
+\begin{gather*}
+	z < 0 \rightarrow I_z = (z, 0, 1, 0) \\
+	z > 0 \rightarrow  I_z = (0, z, 0, 1) \\
+	z = 0 \rightarrow I_z = (0, 0, 0, 0) 
+\end{gather*}
+
+Next we need to add this to the interval of the start node $p$, denoted as $I_p$ as to compute the resulting interval after the transition. The interval of $p$ will be the interval obtained in the previous step. This new interval will be referred to as $I_r$.
+
+\begin{gather*}
+	I_r = I_z + I_p
+\end{gather*}
+
+The $I_f$ interval needs to be scaled as to be conform with the automaton bounds as well as the node bounds. In the formula below the automaton bounds are represented by $I_{ab}$ and the node bounds by $I_{nb}$. The resulting bounded interval will be stored in $I_{br}$.
+
+\begin{gather*}
+	I_{br} = (I_r \cap I_{ab}) \cap I_{nb}
+\end{gather*}
+
+Finally we update the interval of the transitions end node $q$ by taking the intersection of the original interval from the previous step, $I_q$ with the newly obtained interval $I_{br}$. The interval $I_q'$ will be used as the new interval for node $q$ in the current step.
+
+\begin{gather*}
+	I_{q}' = I_{br} \cup I_q
+\end{gather*}
+
+As a condition to verify reachability we will add a constraint on $I_q'$ ensuring that it is not empty. In case $I_q'$ is empty it implies that this transition was not enabled and that node $q$ is not reachable via the chosen path.
+
+Simply ensuring emptiness will lead to undesired behaviour in case there are transitions that can not be taken. Given the automaton in Figure \ref{fig:partially reachable} we can see that $q_2$ and $q_3$ will never be reachable. If we enforce the above it will result in no nodes being reachable as we require a path of length 3 where in the end none of the intervals are empty. This can never be true as two of the nodes will always have an empty interval.
+
+\begin{figure}[h]%
+	\centering
+	\begin{tikzpicture}[auto, >=latex, node distance = 1 cm]
+		\tikzstyle{round} = [thick, draw=black, circle, font=\small]
+		\tikzstyle{invis} = [draw=none, font=\small]
+		\tikzstyle{arrow} = [thick,->,>=stealth]
+		
+		\node[round] 	at (0, 0) 		(q0) 	{$q_0$};
+		\node[round] 	at (3, 0)		(q1) 	{$q_1$};
+		\node[invis]	at (3.7, 0.5)	(q4)	{$=1$};
+		\node[round] 	at (6, 0)		(q2) 	{$q_2$};
+		\node[invis]	at (6.7, 0.5)	(q4)	{$\geq 5$};
+		\node[round] 	at (9, 0)		(q3) 	{$q_3$};
+		\node[invis]	at (9.7, 0.5)	(q4)	{$\leq 5$};
+		
+		\path[->]
+		(q0) 	edge 					node 					{$+1$}	(q1)
+		(q1) 	edge 					node 					{$-1$}	(q2)
+		(q2)	edge 					node					{$-1$}	(q3);
+	\end{tikzpicture}
+	\caption{Example of a partially reachable automaton.}
+	\label{fig:partially reachable}
+\end{figure}
+
+To prevent this situation we will use the previously defined variable $n$ with which we can extend the previously defined formula for an interval update with the condition below.
+
+\begin{gather*}
+	i > n \lor update\_interval
+\end{gather*}
+
+The intervals that do not get update within a step will simply have their value copied to the next interval. Note that this is not necessarily needed in this case considering that we do not support loops. We could theoretically keep two intervals for each node, one interval representing the value at initialization and one interval representing the value after visiting because each node can logically only be visited once. This implementation would however heavily limit the extendability of this implementation as it would result in us never being able to add loop support. As will be discussed later in this paper there is still need for further improvements including support for loops and the option for this should therefore be left open.
 
 \section{Tool Validation}
-To determine the corectness of our tool, we created a test suite consisting out of three groups of tests, which are all white box tests. The tests will check the outputted dot and the trace output of the program, against traces and dot files which have been manually generated and verified.
+To determine the correctness of our tool, we created a test suite consisting out of three groups of tests, which are all white box tests. The tests will check the outputted dot and the trace output of the program, against traces and dot files which have been manually generated and verified.
 
 The first group will only test the first loop of the program, and it will check whether or not all nodes get properly generated. This purely tests on the generation of nodes, and will not regard any variation in configuration in which these nodes could occur.
 
