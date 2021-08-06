@@ -1,11 +1,12 @@
 from z3 import *
 from typing import List, Dict
+from Automaton.Edge import Edge
 
 import operator
 
 
 class EquationSolver:
-    def __init__(self, automaton, goal_node=None):
+    def __init__(self, automaton):
         self.automaton = automaton
         self.s = Solver()
         self.auxiliary_counter = 0
@@ -29,6 +30,7 @@ class EquationSolver:
         # every three consecutive entries form one edge
         #   s0, z0, e0, s1, z1, e1, ...
         self.edges = list()
+        self.edge_mapping: Dict[Edge, int] = dict()
 
         # the transition objects created for our formula
         # each of these transitions will match one edge
@@ -36,9 +38,11 @@ class EquationSolver:
         #   s0, z0, e0, s1, z1, e1, ...
         self.transitions: List[ArithRef] = list()
 
-        # the intervals used within the different stages.Each four
-        # consecutive entries will match the interval for one
+        # the intervals used within the different stages. Each four
+        # consecutive entries will match one sub interval for one
         # specific node where the first interval matches node 0
+        # each node has x sub intervals with
+        #       x = 4 |Q| + 4
         #   b0, t0, ⊥0, ⊤0, b1, t1, ⊥1, ⊤1, ...
         self.intervals: List[ArithRef] = list()
 
@@ -47,57 +51,41 @@ class EquationSolver:
         # we refer to this parameter, rather than creating a new one
         self.parameters: Dict[str, IntVal] = dict()
 
-        # track the final transition
-        # this transition must end in the goal node
-        # for it to be marked final
-        self.m = Int('m')
+        # track the number of intervals per node
+        self.nr_of_intervals = 4 * len(self.nodes) + 4
 
-        # mark the goal node if there is any
-        self.goal_node = goal_node
+        # track the transition that was used to achieve an interval
+        # to prevent reevaluating the same interval over and over
+        self.used_edges = list()
 
-        # track the reachability of nodes
-        self.reachable = dict()
+        # track if a node contains a not empty sub interval
+        self.reachable = list()
+
+        # keep track of which edges are part of which type of loop
+        self.lower_bound_edges = list()
+        self.upper_bound_edges = list()
+        self.lower_unbound_edges = list()
+        self.upper_unbound_edges = list()
 
     def analyse(self):
         self.build_transitions()
         self.build_intervals()
-        self.add_initial_condition()
-        self.add_sequential_condition()
+        self.analyse_loops()
+        self.build_node_conditions()
+        self.add_successor_condition()
+        self.add_reachability_condition()
+        self.solve()
 
-        if self.goal_node is not None:
-            if self.automaton.is_initial(self.goal_node):
-                print("Node {} is reachable as it is the initial node".format(self.goal_node))
-            self.add_final_condition(self.goal_node)
-            self.solve()
-        else:
-            for node in self.nodes:
-                print("\nSolving for node {}".format(node))
-                if self.automaton.is_initial(node):
-                    print("Node {} is reachable as it is the initial node".format(node))
-                else:
-                    self.s.push()
-                    self.add_final_condition(node)
-                    self.reachable[node] = self.s.check() == sat
-                    self.solve()
-                    self.s.pop()
-
-    def get_index_of_node(self, node):
-        for i in range(len(self.nodes)):
-            if self.nodes[i] == node:
-                return i
-        return None
-
+    # fetch all edges from the automaton
+    # convert each edge to [from, op, end] format
+    # from and end are mapped to integers where
+    # each integer represents a node
     def build_transitions(self):
-        # fetch all edges from the automaton
-        # convert each edge to [from, op, end] format
-        # from and end are mapped to integers where
-        # each integer represents a node
         for start in self.nodes:
             for end in self.automaton.get_outgoing_edges(start):
                 edge = self.automaton.get_edge(start, end)
                 start_index = self.get_index_of_node(edge.get_start())
                 end_index = self.get_index_of_node(edge.get_end())
-                end_condition = self.automaton.get_node_condition(end)
                 if edge.get_operation() is not None:
                     operation = edge.get_operation().get_value()
                 else:
@@ -107,161 +95,409 @@ class EquationSolver:
                 transition.append(start_index)
                 transition.append(operation)
                 transition.append(end_index)
+                index = int(len(self.edges) / 3)
+                self.edge_mapping[edge] = index
                 self.edges += transition
 
-                condition = list()
-                if end_condition is None:
-                    condition.append(3)
-                    condition.append(0)
-                else:
-                    operation = end_condition.get_operation()
-                    if operation == ">=":
-                        condition.append(0)
-                    elif operation == "<=":
-                        condition.append(1)
-                    else:
-                        condition.append(2)
-                    condition.append(end_condition.get_value())
-                self.conditions += condition
+    # find which edges are part of loops that do are pure add/sub
+    def analyse_loops(self):
+        bound_upper_loops = list()
+        bound_lower_loops = list()
+        for loop in self.automaton.get_loops():
+            nodes = loop.get_nodes()
+            is_bound_lower = True
+            is_bound_upper = True
+            for i in range(len(nodes)):
+                node = nodes[i]
+                next_node = nodes[(i + 1) % len(nodes)]
 
-        # create a sequence of transitions
-        # each transition is a sequence of integers
-        # format: [p, z, q]
-        for i in range(len(self.nodes) - 1):
-            transition = IntVector('t{}'.format(i), 3)
-            condition = IntVector('c{}'.format(i), 2)
-            or_arguments = list()
-            for j in range(0, len(self.edges), 3):
-                and_arguments = list()
-                for k in range(3):
-                    val = self.edges[j + k]
-                    if str(val).lstrip("-").isnumeric():
-                        and_arguments.append(transition[k] == val)
-                    else:
-                        if val in self.parameters:
-                            param = self.parameters[val]
-                        else:
-                            param = Int(val)
-                            self.parameters[val] = param
-                        and_arguments.append(transition[k] == param)
-                for k in range(2):
-                    index = int(j / 3 * 2) + k
-                    and_arguments.append(condition[k] == self.conditions[index])
-                or_arguments.append(And(and_arguments))
-            expr = Or(or_arguments)
-            self.s.add(expr)
-            self.transitions += transition
-            self.selected_conditions += condition
+                edge = self.automaton.get_outgoing_edges(node)[next_node]
+                index = self.edge_mapping[edge]
+
+                if loop.has_add() and edge not in self.upper_unbound_edges:
+                    self.upper_unbound_edges.append(index)
+                    if index in self.upper_bound_edges:
+                        self.upper_bound_edges.remove(index)
+                    is_bound_upper = False
+
+                if not loop.has_add() and \
+                        index not in self.upper_unbound_edges and \
+                        index not in self.upper_bound_edges:
+                    self.upper_bound_edges.append(index)
+
+                if loop.has_sub() and index not in self.lower_unbound_edges:
+                    self.lower_unbound_edges.append(index)
+                    if index in self.lower_bound_edges:
+                        self.lower_bound_edges.remove(index)
+                    is_bound_lower = False
+
+                if not loop.has_sub() and \
+                        index not in self.lower_unbound_edges and \
+                        index not in self.lower_bound_edges:
+                    self.lower_bound_edges.append(index)
+
+            if is_bound_upper:
+                bound_upper_loops.append(loop)
+            if is_bound_lower:
+                bound_lower_loops.append(loop)
+
+        print(self.lower_bound_edges)
+        print(self.lower_unbound_edges)
+        print(self.upper_bound_edges)
+        print(self.upper_unbound_edges)
+
+        # generate an "is inf" condition for all nodes
+        is_inf_conditions = dict()
+        is_bounded_conditions = dict()
+
+        for node in self.lower_bound_edges:
+            if node in is_inf_conditions:
+                continue
+
+            is_inf_conditions[node] = list()
+            is_bounded_conditions[node] = dict()
+
+            # get the index of the start of the first sub interval
+            base_sub_index = node * self.nr_of_intervals * 4
+
+            # get the index of the start of the first sub intervals' edge
+            base_edge_index = node * self.nr_of_intervals
+
+            for sub in range(self.nr_of_intervals):
+                is_bounded_conditions[node][sub] = list()
+
+                # get the val of the start of the cur sub interval
+                incl_low_index = base_sub_index + sub * 4 + 2
+                incl_low_val = self.intervals[incl_low_index]
+
+                # get the val of the edge linked to the cur sub interval
+                edge_index = base_edge_index + sub
+                edge_val = self.used_edges[edge_index]
+
+                # check if this sub interval has an inf bound
+                is_inf_conditions[node].append(
+                    And(
+                        incl_low_val == 2,
+                        edge_val != -2
+                    )
+                )
+
+                # get the lower bound of this sub interval
+                low_index = base_sub_index + sub * 4
+                low_val = self.intervals[low_index]
+
+                # iterate over all other sub intervals in the cur node
+                for sub2 in range(self.nr_of_intervals):
+                    if sub == sub2:
+                        continue
+
+                    # get the lower bound of this second sub interval
+                    low_index2 = base_sub_index + sub2 * 4
+                    low_val2 = self.intervals[low_index2]
+
+                    # get the linked edge of this second sub interval
+                    edge_index2 = base_edge_index + sub2
+                    edge_val2 = self.used_edges[edge_index2]
+
+                    print("node: {}, sub: {}, sub2: {}, edge_val: {}, edge_val2: {}".format(node, sub, sub2, edge_val, edge_val2))
+
+                    # check is this node is bounded by the second interval
+                    is_bounded_conditions[node][sub].append(
+                        And(
+                            low_val >= low_val2,
+                            edge_val2 != -2
+                        )
+                    )
+
+        for loop in bound_lower_loops:
+            condition = list()
+            not_taken = list()
+            nodes = loop.get_nodes()
+            indexes = [self.nodes.index(node) for node in nodes]
+
+            # for all sub intervals of all nodes part of this loop
+            # if edge equals any edge part of this loop
+            # A or B must hold
+            for i in range(len(indexes)):
+                index = indexes[i]
+                or_condition = list()
+
+                # get the current node under eval
+                node = self.nodes[index]
+                print(node)
+                base_sub_index = index * self.nr_of_intervals * 4
+                base_edge_index = index * self.nr_of_intervals
+
+                # get the prev node in the loop
+                prev_index = indexes[(i - 1) % len(indexes)]
+                print(prev_index)
+                prev_node = self.nodes[prev_index]
+
+                # get the edge associated with this node sequence
+                edge = self.automaton.get_outgoing_edges(prev_node)[node]
+                print(edge)
+                edge_index = self.edge_mapping[edge]
+
+                # consider the case in which the loop is simply not taken
+                no_loop_taken = list()
+                for j in range(self.nr_of_intervals):
+                    edge_val = self.used_edges[base_edge_index + j]
+                    no_loop_taken.append(edge_val != edge_index)
+                not_taken += no_loop_taken
+
+                # consider the cases in which the loop is taken
+                for j in range(self.nr_of_intervals):
+                    loop_taken = list()
+                    loop_condition = list()
+                    edge_val = self.used_edges[base_edge_index + j]
+                    loop_taken.append(edge_val == edge_index)
+                    print(loop_taken)
+                    inf_condition = is_inf_conditions[index]
+                    inf_exists = [x for y, x in enumerate(inf_condition)
+                                  if y != j]
+
+                    sub_index = base_sub_index + j * 4
+                    low_val = self.intervals[sub_index]
+                    low_incl_val = self.intervals[sub_index + 2]
+                    loop_condition.append(
+                        And(
+                            Or(inf_exists),
+                            low_val == 0,
+                            low_incl_val == 2
+                        )
+                    )
+
+                    loop_condition.append(
+                        Or(is_bounded_conditions[index][j])
+                    )
+                    loop_taken.append(Or(loop_condition))
+                    or_condition.append(And(loop_taken))
+
+                condition.append(Or(or_condition))
+
+            # check if all edges part of this loop are effectively taken
+            # if not it makes no sense to apply bounds
+            condition.append(And(not_taken))
+            self.s.add(Or(condition))
+
+    # store all node conditions
+    def build_node_conditions(self):
+        for i in range(len(self.nodes)):
+            node = self.nodes[i]
+            end_condition = self.automaton.get_node_condition(node)
+            condition = list()
+            if end_condition is None:
+                condition.append(3)
+                condition.append(0)
+            else:
+                operation = end_condition.get_operation()
+                if operation == ">=":
+                    condition.append(0)
+                elif operation == "<=":
+                    condition.append(1)
+                else:
+                    condition.append(2)
+                condition.append(end_condition.get_value())
+            self.conditions += condition
 
     def build_intervals(self):
         # initialise all intervals
-        for r in range(len(self.nodes)+1):
-            for n in range(len(self.nodes)):
-                self.intervals += self.generate_interval(r, n)
+        for n in range(len(self.nodes)):
+            for s in range(self.nr_of_intervals):
+                self.intervals += self.generate_interval(n, s)
+                self.used_edges.append(Int('t_{}_{}'.format(n, s)))
 
-        for i in range(len(self.nodes)):
-            base = i * 4
-            if i == 0:
-                initial_value = self.automaton.get_initial_value()
-                self.s.add(self.intervals[base] == initial_value)
-                self.s.add(self.intervals[base + 1] == initial_value)
-                self.s.add(self.intervals[base + 2] == 1)
-                self.s.add(self.intervals[base + 3] == 1)
-            else:
-                self.s.add(self.intervals[base] == 0)
-                self.s.add(self.intervals[base + 1] == 0)
-                self.s.add(self.intervals[base + 2] == 0)
-                self.s.add(self.intervals[base + 3] == 0)
+        # initialise the reachability values tracking whether or not
+        # the corresponding node is reachable
+        for n in range(len(self.nodes)):
+            self.reachable.append(Int('r_{}'.format(n)))
 
-        # define the evolution of the intervals
-        for it in range(len(self.nodes) - 1):
-            for interval in range(len(self.nodes)):
-                if it + 1 == interval:
-                    self.update_interval(it)
+    # ensure that for the sub intervals of all nodes they are
+    # a successor of a preceding node
+    def add_successor_condition(self):
+        # for all nodes in the automaton
+        for node in range(len(self.nodes)):
+            base_end = node * self.nr_of_intervals * 4
+            used_edge_base = node * self.nr_of_intervals
+
+            # get the condition of the current node
+            cond_base_index = int(node * 2)
+            cond_type = self.conditions[cond_base_index]
+            cond_value = self.conditions[cond_base_index + 1]
+
+            # track the conditions for each of the sub intervals
+            or_conditions = dict()
+            for i in range(self.nr_of_intervals):
+                or_conditions[i] = list()
+
+            # check if the current node is the initial node
+            if self.nodes[node] == self.automaton.get_initial_node():
+                vec_name = 'y{}'.format(self.auxiliary_counter)
+                self.auxiliary_counter += 1
+                y = IntVector(vec_name, 4)
+
+                # initialise the first sub interval of the initial node
+                interval = self.intervals[base_end: base_end + 4]
+                init_val = self.automaton.get_initial_value()
+                cond = list()
+                cond += self.assign(interval, init_val, init_val, 1, 1)
+                cond.append(And(self.is_in_bounds(interval, interval,
+                                                  (cond_type, cond_value), y)))
+                cond.append(self.used_edges[0] == -1)
+                or_conditions[0].append(And(cond))
+
+            # go over all the edges that end in the current node
+            for edge in range(0, len(self.edges), 3):
+                start = self.edges[edge]
+                op = self.edges[edge + 1]
+                end = self.edges[edge + 2]
+
+                # if the edge does not end in the current node continue
+                if end != node:
+                    continue
+
+                vec_name = 'y{}'.format(self.auxiliary_counter)
+                self.auxiliary_counter += 1
+                y = IntVector(vec_name, 4)
+
+                vec_name2 = 'y{}'.format(self.auxiliary_counter)
+                self.auxiliary_counter += 1
+                y2 = IntVector(vec_name2, 4)
+
+                base_start = start * self.nr_of_intervals * 4
+
+                # ensure that there is at least one edge for which
+                # there is a preceding interval from which the current
+                # interval can be generated
+                for new_int in range(self.nr_of_intervals):
+
+                    if node == 0 and new_int == 0:
+                        continue
+
+                    unique_update = list()
+
+                    # get the interval of the end node
+                    end_index = base_end + new_int * 4
+                    end_interval = self.intervals[end_index: end_index + 4]
+
+                    used_edge_index = used_edge_base + new_int
+                    used_edge_var = self.used_edges[used_edge_index]
+                    edge_cond = used_edge_var == edge / 3
+                    unique_update.append(edge_cond)
+
+                    for other_int in range(0, new_int):
+                        past_edge_index = used_edge_base + other_int
+                        past_edge_var = self.used_edges[past_edge_index]
+                        edge_not_used = past_edge_var != used_edge_var
+                        unique_update.append(edge_not_used)
+
+                    for prev_int in range(self.nr_of_intervals):
+                        # get the interval of the start node
+                        start_index = base_start + prev_int * 4
+                        start_interval = self.intervals[start_index:
+                                                        start_index + 4]
+
+                        # generate the successor condition
+                        update = self.update_interval(start_interval,
+                                                      op,
+                                                      end_interval,
+                                                      (cond_type, cond_value),
+                                                      y, y2)
+
+                        unique_update.append(update)
+
+                        # allow a way out in case the current interval is empty
+                        # if not every interval will be forced to be filled
+                        empty_cond = And(*self.is_empty(end_interval[0],
+                                                        end_interval[1],
+                                                        end_interval[2],
+                                                        end_interval[3]),
+                                         used_edge_var == -2)
+
+                        final_cond = If(And(unique_update), True, empty_cond)
+                        unique_update.pop(-1)
+
+                        or_conditions[new_int].append(final_cond)
+
+                print("{} -> {} -> {}".format(start, op, end))
+
+            for key in or_conditions.keys():
+                condition = or_conditions[key]
+                if condition:
+                    # print(len(or_condition))
+                    self.s.add(Or(condition))
                 else:
-                    base = it * (len(self.nodes) + 1) * 4 + interval * 4
-                    target = base + (len(self.nodes) + 1) * 4
-                    start_interval = self.intervals[base: base + 4]
-                    target_interval = self.intervals[target: target + 4]
-                    expr = self.assign(target_interval,
-                                       start_interval[0],
-                                       start_interval[1],
-                                       start_interval[2],
-                                       start_interval[3])
-                    self.s.add(And(expr))
+                    end_index = base_end + key * 4
+                    end_interval = self.intervals[end_index: end_index + 4]
+                    empty_cond = And(self.is_empty(end_interval[0],
+                                                   end_interval[1],
+                                                   end_interval[2],
+                                                   end_interval[3]))
+                    self.s.add(empty_cond)
 
-    @staticmethod
-    def generate_interval(r, node_index):
-        interval = list()
-        interval.append(Int("i_{}_{}_b".format(r, node_index)))
-        interval.append(Int("i_{}_{}_t".format(r, node_index)))
-        interval.append(Int("i_{}_{}_i_l".format(r, node_index)))
-        interval.append(Int("i_{}_{}_i_u".format(r, node_index)))
-        return interval
+    def add_reachability_condition(self):
+        for n in range(len(self.nodes)):
+            or_conditions = list()
+            base_index = n * self.nr_of_intervals * 4
 
-    def update_interval(self, it):
-        z = self.transitions[it * 3 + 1]
+            for i in range(self.nr_of_intervals):
+                index = base_index + i * 4
+                interval = self.intervals[index: index + 4]
+                cond = self.is_not_empty(interval[0], interval[1],
+                                         interval[2], interval[3])
+                or_conditions.append(Or(cond))
 
-        base = it * (len(self.nodes) + 1) * 4 + it * 4
-        end = base + 4
-        target = end + (len(self.nodes) + 1) * 4
+            reachable = self.reachable[n]
+            cond = If(Or(or_conditions), reachable == 1, reachable == 0)
+            self.s.add(cond)
 
-        start_interval = self.intervals[base: base + 4]
-        end_interval = self.intervals[end: end + 4]
-        target_interval = self.intervals[target: target + 4]
+        self.s.add(Sum(*self.reachable) == len(self.nodes))
 
+    def update_interval(self, start, z, end, node_cond, y, y2):
         update_condition = list()
 
-        vec_name = 'y{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        y = IntVector(vec_name, 4)
+        condition = Or(self.is_not_empty(start[0], start[1],
+                                         start[2], start[3]))
+        update_condition.append(condition)
+
+        condition = Or(self.is_not_empty(end[0], end[1], end[2], end[3]))
+        update_condition.append(condition)
 
         or_arguments = list()
 
         # cover the case in which z > 0
         and_args = list()
-        and_args.append(z > 0)
+        if z > 0:
+            addend = [0, z, 0, 1]
+            and_args.append(self.add_vec(start, addend, y))
 
-        addend_name = 'addend{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        addend = IntVector(addend_name, 4)
-
-        and_args += self.assign(addend, 0, z, 0, 1)
-        and_args.append(self.add_vec(start_interval,
-                                     addend,
-                                     y))
-
-        or_arguments.append(And(and_args))
+            update_condition.append(And(and_args))
 
         # cover the case in which z < 0
-        and_args.clear()
-        and_args.append(z < 0)
+        if z < 0:
+            addend = [z, 0, 1, 0]
+            and_args.append(self.add_vec(start, addend, y))
 
-        addend_name = 'addend{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        addend2 = IntVector(addend_name, 4)
-
-        and_args += self.assign(addend2, z, 0, 1, 0)
-        and_args.append(self.add_vec(start_interval,
-                                     addend2,
-                                     y))
-
-        or_arguments.append(And(and_args))
+            update_condition.append(And(and_args))
 
         # cover the case in which z = 0
-        and_args.clear()
-        and_args.append(z == 0)
+        if z == 0:
+            and_args.append(z == 0)
 
-        and_args += self.assign(y,
-                                start_interval[0],
-                                start_interval[1],
-                                start_interval[2],
-                                start_interval[3])
-        or_arguments.append(And(and_args))
+            and_args += self.assign(y, start[0], start[1], start[2], start[3])
+            or_arguments.append(And(and_args))
 
-        update_condition.append(Or(or_arguments))
+            update_condition.append(Or(or_arguments))
 
-        # the sum is now stored in y
+        # the sum is now stored in y, intersect this interval with both node
+        # and automaton bounds
+        update_condition += self.is_in_bounds(y, end, node_cond, y2)
+
+        return And(update_condition)
+
+    def is_in_bounds(self, start, end, node_cond, y2):
+        condition = list()
+
         # intersect this with the automaton bound
         if self.automaton.get_lower_bound() == -float('inf'):
             incl_low = 2
@@ -277,157 +513,113 @@ class EquationSolver:
             incl_high = 0
             high = self.automaton.get_upper_bound()
 
-        vec_name = 'ab{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        interval = IntVector(vec_name, 4)
-        update_condition.append(
-            And(
-                self.assign(interval,
-                            low, high,
-                            incl_low, incl_high)
-            )
-        )
+        interval = [low, high, incl_low, incl_high]
 
-        vec_name = 'y{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        y2 = IntVector(vec_name, 4)
-
-        self.intersect_vec(y, interval, y2)
+        condition.append(self.intersect_vec(start, interval, y2))
 
         # the result is now stored in y2
         # intersect this with the node bound
-        condition = self.selected_conditions[it * 2]
-        value = self.selected_conditions[it * 2 + 1]
+        cond_type = node_cond[0]
+        cond_value = node_cond[1]
 
-        vec_name = 'ab{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        interval = IntVector(vec_name, 4)
+        interval = []
 
-        or_arguments = list()
-        or_arguments.append(
-            And(
-                condition == 0,
-                And(self.assign(interval, value, 0, 1, 2))
-            )
-        )
-        or_arguments.append(
-            And(
-                condition == 1,
-                And(self.assign(interval, 0, value, 2, 1))
-            )
-        )
-        or_arguments.append(
-            And(
-                condition == 2,
-                And(self.assign(interval, value, value, 1, 1))
-            )
-        )
-        or_arguments.append(
-            And(
-                condition == 3,
-                And(self.assign(interval, 0, 0, 2, 2))
-            )
-        )
+        if cond_type == 0:
+            interval = [cond_value, 0, 1, 2]
+        elif cond_type == 1:
+            interval = [0, cond_value, 2, 1]
+        elif cond_type == 2:
+            interval = [cond_value, cond_value, 1, 1]
 
-        update_condition.append(Or(or_arguments))
+        if interval:
+            condition.append(self.intersect_vec(y2, interval, end))
 
-        vec_name = 'y{}'.format(self.auxiliary_counter)
-        self.auxiliary_counter += 1
-        y3 = IntVector(vec_name, 4)
+        return condition
 
-        self.intersect_vec(y2, interval, y3)
+    def solve(self):
+        if self.s.check() == sat:
+            print("Solution found")
+            m = self.s.model()
+            print(m.decls())
 
-        # the result is now stored in y3
-        # take the union with this vector and the original interval
-        self.union_vec(end_interval, y3, target_interval)
+            def empty(w, x, y, z):
+                return y == 0 and z == 0 and w == x
 
-        # ensure that the result is not empty
-        # if this is the case it means that the node is not reachable
-        update_condition.append(Or(
-            self.is_not_empty(
-                target_interval[0],
-                target_interval[1],
-                target_interval[2],
-                target_interval[3]
-            )
-        ))
+            print("Intervals")
+            for i in range(len(self.nodes)):
+                print("\tNode: {}".format(self.nodes[i]))
+                print("\treachability: {}".format(m[self.reachable[i]]))
+                base_index = i * self.nr_of_intervals * 4
+                base_edge = i * self.nr_of_intervals
+                for j in range(self.nr_of_intervals):
+                    int_index = base_index + j * 4
+                    edge_index = base_edge + j
+                    b = m[self.intervals[int_index]]
+                    t = m[self.intervals[int_index + 1]]
+                    i_b = m[self.intervals[int_index + 2]]
+                    i_t = m[self.intervals[int_index + 3]]
+                    edge = m[self.used_edges[edge_index]]
+                    if not empty(b, t, i_b, i_t):
+                        print("\t\t[{}, {}, {}, {}] using {}".
+                              format(b, t, i_b, i_t, edge))
+                    # else:
+                    #     print("\t\t[{}, {}, {}, {}] using {}".
+                    #           format(b, t, i_b, i_t, edge))
 
-        self.s.add(
-            Or(
-                And(update_condition),
-                it > self.m
-            )
-        )
+
+        else:
+            print("No solution found")
+
+    @staticmethod
+    def generate_interval(node_index, sub_index):
+        interval = list()
+        interval.append(Int("i_{}_{}_b".format(node_index, sub_index)))
+        interval.append(Int("i_{}_{}_t".format(node_index, sub_index)))
+        interval.append(Int("i_{}_{}_i_l".format(node_index, sub_index)))
+        interval.append(Int("i_{}_{}_i_u".format(node_index, sub_index)))
+        return interval
 
     def add_vec(self, start, addend, target):
         arguments = list()
 
         # if start is empty -> target = addend
-        and_arguments = list()
-        and_arguments += self.is_empty(
-            start[0],
-            start[1],
-            start[2],
-            start[3]
-        )
-        and_arguments += self.assign(
-            target,
-            addend[0],
-            addend[1],
-            addend[2],
-            addend[3]
-        )
-        arguments.append(And(and_arguments))
+        and_args = list()
+        and_args += self.is_empty(start[0], start[1], start[2], start[3])
+        and_args += self.assign(target,
+                                addend[0], addend[1], addend[2], addend[3])
+        arguments.append(And(and_args))
 
         # if addend is empty -> target = start
-        and_arguments.clear()
-        and_arguments += self.is_empty(
-            addend[0],
-            addend[1],
-            addend[2],
-            addend[3]
-        )
-        and_arguments += self.assign(
-            target,
-            start[0],
-            start[1],
-            start[2],
-            start[3]
-        )
-        arguments.append(And(and_arguments))
+        and_args.clear()
+        and_args += self.is_empty(addend[0], addend[1], addend[2], addend[3])
+        and_args += self.assign(target,
+                                start[0], start[1], start[2], start[3])
+        arguments.append(And(and_args))
 
         # add b and t
-        and_arguments.clear()
-        and_arguments.append(
-            Or(self.is_not_empty(
-                addend[0],
-                addend[1],
-                addend[2],
-                addend[3]
-            )
-            ))
-        and_arguments.append(
-            Or(self.is_not_empty(
-                start[0],
-                start[1],
-                start[2],
-                start[3]
-            )
-            ))
+        and_args.clear()
+
+        and_args.append(
+            Or(self.is_not_empty(addend[0], addend[1], addend[2], addend[3]))
+        )
+        and_args.append(
+            Or(self.is_not_empty(start[0], start[1], start[2], start[3]))
+        )
+
         for i in range(2):
             start_var = start[i]
             addend_var = addend[i]
             target_var = target[i]
-            and_arguments.append(target_var == start_var + addend_var)
+            and_args.append(target_var == start_var + addend_var)
 
         for i in range(2, 4):
             start_var = start[i]
             addend_var = addend[i]
             target_var = target[i]
-            and_arguments.append(
+            and_args.append(
                 self.generate_msum(start_var, addend_var, target_var)
             )
-        arguments.append(And(and_arguments))
+        arguments.append(And(and_args))
 
         return Or(arguments)
 
@@ -731,7 +923,7 @@ class EquationSolver:
 
         # STOP: x and y overlap
 
-        self.s.add(Or(arguments))
+        return Or(arguments)
 
     @staticmethod
     def intersect_vec_one_bound(x_val, x_bound,
@@ -873,26 +1065,26 @@ class EquationSolver:
     def union_vec(self, vector1, vector2, target):
         x_b = vector1[0]
         x_t = vector1[1]
-        x_incl_low = vector1[2]
-        x_incl_high = vector1[3]
+        x_incl_b = vector1[2]
+        x_incl_t = vector1[3]
 
         y_b = vector2[0]
         y_t = vector2[1]
-        y_incl_low = vector2[2]
-        y_incl_high = vector2[3]
+        y_incl_b = vector2[2]
+        y_incl_t = vector2[3]
 
         z_b = target[0]
         z_t = target[1]
-        z_incl_low = target[2]
-        z_incl_high = target[3]
+        z_incl_b = target[2]
+        z_incl_t = target[3]
 
         or_arguments = list()
 
         # START: x is empty
 
         empty_arguments = list()
-        empty_arguments += self.is_empty(x_b, x_t, x_incl_low, x_incl_high)
-        empty_arguments += self.assign(target, y_b, y_t, y_incl_low, y_incl_high)
+        empty_arguments += self.is_empty(x_b, x_t, x_incl_b, x_incl_t)
+        empty_arguments += self.assign(target, y_b, y_t, y_incl_b, y_incl_t)
 
         or_arguments.append(And(empty_arguments))
 
@@ -900,8 +1092,8 @@ class EquationSolver:
         # START: y is empty
 
         empty_arguments.clear()
-        empty_arguments += self.is_empty(y_b, y_t, y_incl_low, y_incl_high)
-        empty_arguments += self.assign(target, x_b, x_t, x_incl_low, x_incl_high)
+        empty_arguments += self.is_empty(y_b, y_t, y_incl_b, y_incl_t)
+        empty_arguments += self.assign(target, x_b, x_t, x_incl_b, x_incl_t)
 
         or_arguments.append(And(empty_arguments))
 
@@ -910,21 +1102,21 @@ class EquationSolver:
 
         not_empty_arguments = list()
         not_empty_arguments.append(
-            Or(self.is_not_empty(x_b, x_t, x_incl_low, x_incl_high))
+            Or(self.is_not_empty(x_b, x_t, x_incl_b, x_incl_t))
         )
         not_empty_arguments.append(
-            Or(self.is_not_empty(y_b, y_t, y_incl_low, y_incl_high))
+            Or(self.is_not_empty(y_b, y_t, y_incl_b, y_incl_t))
         )
 
-        expr = self.union_vec_one_bound(x_b, x_incl_low,
-                                        y_b, y_incl_low,
-                                        z_b, z_incl_low,
+        expr = self.union_vec_one_bound(x_b, x_incl_b,
+                                        y_b, y_incl_b,
+                                        z_b, z_incl_b,
                                         operator.lt)
         not_empty_arguments.append(expr)
 
-        expr = self.union_vec_one_bound(x_t, x_incl_high,
-                                        y_t, y_incl_high,
-                                        z_t, z_incl_high,
+        expr = self.union_vec_one_bound(x_t, x_incl_t,
+                                        y_t, y_incl_t,
+                                        z_t, z_incl_t,
                                         operator.gt)
         not_empty_arguments.append(expr)
 
@@ -932,7 +1124,7 @@ class EquationSolver:
 
         # STOP: x and y is not empty
 
-        self.s.add(Or(or_arguments))
+        return Or(or_arguments)
 
     @staticmethod
     def union_vec_one_bound(x_val, x_bound,
@@ -1038,85 +1230,8 @@ class EquationSolver:
 
         return Or(or_arguments)
 
-    def add_initial_condition(self):
-        # ensure that our first transition starts in
-        # the initial node of the automaton
-        start_node = self.automaton.get_initial_node()
-        start_index = self.get_index_of_node(start_node)
-        self.s.add(self.transitions[0] == start_index)
-
-    def add_sequential_condition(self):
-        # either two subsequent transitions much follow up
-        # on each other or the goal node must already be reached
-        and_arguments = list()
-        for i in range(2, len(self.transitions) - 3, 3):
-            end_node = self.transitions[i]
-            start_node = self.transitions[i + 1]
-            and_arguments.append(Or(end_node == start_node, (i - 2) / 3 >= self.m))
-        self.s.add(And(and_arguments))
-
-    def add_final_condition(self, goal):
-        # ensure that there is a transition which goes
-        # towards the goal node. Track the index of this
-        # transition with the variable m
-        or_arguments = list()
-        goal_index = self.get_index_of_node(goal)
-        for i in range(2, len(self.transitions), 3):
-            end_node = self.transitions[i]
-            arg = And(end_node == goal_index, self.m == (i - 2) / 3)
-            or_arguments.append(arg)
-        self.s.add(Or(or_arguments))
-
-    def solve(self):
-        if self.s.check() == sat:
-            m = self.s.model()
-
-            condition_to_string = {
-                0: ">=",
-                1: "<=",
-                2: "==",
-                3: "no condition"
-            }
-
-            print("m = {}".format(m[self.m]))
-
-            print("\nparameters:")
-            for val in self.parameters:
-                print("{} = {}".format(val, m[self.parameters[val]]))
-
-            print("\ntransitions:")
-            for i in range(m[self.m].as_long() + 1):
-                print("{}, {}, {}".format(
-                    self.nodes[m[self.transitions[i * 3]].as_long()],
-                    m[self.transitions[(i * 3) + 1]],
-                    self.nodes[m[self.transitions[(i * 3) + 2]].as_long()]
-                ))
-                condition = condition_to_string[m[self.selected_conditions[i * 2]].as_long()]
-                if condition == "no condition":
-                    print("no end condition")
-                else:
-                    print("end cond: {} {}".format(
-                        condition,
-                        m[self.selected_conditions[(i * 2) + 1]].as_long()
-                    ))
-
-            print("\nintervals:")
-            for r in range(m[self.m].as_long() + 2):
-                interval_offset = (len(self.nodes) + 1) * 4 * r
-                print("Round {}".format(r))
-                for j in range(m[self.m].as_long() + 2):
-                    start_index = interval_offset + j * 4
-                    b = self.intervals[start_index]
-                    t = self.intervals[start_index + 1]
-                    i_l = self.intervals[start_index + 2]
-                    i_h = self.intervals[start_index + 2]
-                    print("s{}= [{}, {}, {}, {}]".format(
-                        j,
-                        m[b].as_long(),
-                        m[t].as_long(),
-                        m[i_l].as_long(),
-                        m[i_h].as_long()
-                    ))
-        else:
-            print("No solution found")
-        print("===========")
+    def get_index_of_node(self, node):
+        for i in range(len(self.nodes)):
+            if self.nodes[i] == node:
+                return i
+        return None

@@ -56,9 +56,25 @@ class LoopFinder:
             high_bound_node = None
             high_preceding_node = None
 
+            contains_sub = False
+            contains_add = False
+
             nodes = loop.get_nodes()
             for i in range(len(nodes)):
                 node = nodes[i]
+                next_node = nodes[(i + 1) % len(nodes)]
+
+                edge = self.automaton.get_outgoing_edges(node)[next_node]
+                operation = str(edge.get_operation())
+
+                if operation == "None" or \
+                        operation == "+0" or \
+                        operation == "-1":
+                    pass
+                elif operation[0] == "+":
+                    contains_add = True
+                elif operation[0] == "-":
+                    contains_sub = True
 
                 condition = self.automaton.get_node_condition(node)
                 if condition is None:
@@ -85,6 +101,9 @@ class LoopFinder:
             loop.set_max_bounded_node(high_bound_node)
             loop.set_max_preceding_node(high_preceding_node)
 
+            loop.register_addition(contains_add)
+            loop.register_subtraction(contains_sub)
+
 
 class Loop:
     def __init__(self, nodes):
@@ -100,6 +119,9 @@ class Loop:
 
         self.expanded_up = False
         self.expanded_down = False
+
+        self.contains_sub = False
+        self.contains_add = False
 
     def get_nodes(self):
         return self.nodes
@@ -151,6 +173,18 @@ class Loop:
 
     def has_downwards_expanded(self):
         return self.expanded_down
+
+    def register_addition(self, value):
+        self.contains_add = value
+
+    def has_add(self):
+        return self.contains_add
+
+    def register_subtraction(self, value):
+        self.contains_sub = value
+
+    def has_sub(self):
+        return self.contains_sub
 
     def __str__(self):
         output = ""

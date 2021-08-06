@@ -126,18 +126,18 @@ def analyze_reachability_with_formula(dot_file):
     automaton.set_upper_bound(args['high'])
     automaton.set_initial_value(args['start'])
 
-    solver = EquationSolver(automaton, args["node"])
+    solver = EquationSolver(automaton)
     solver.analyse()
 
     fully_reachable = False
 
-    for node in solver.reachable:
-        if not solver.reachable[node]:
-            fully_reachable = False
-
-        if node[0] == "Q" and not solver.reachable[node]:
-            print('Line {} was found to be not '
-                  'reachable.'.format(node[1:]))
+    # for node in solver.reachable:
+    #     if not solver.reachable[node]:
+    #         fully_reachable = False
+    #
+    #     if node[0] == "Q" and not solver.reachable[node]:
+    #         print('Line {} was found to be not '
+    #               'reachable.'.format(node[1:]))
 
     return fully_reachable
 
