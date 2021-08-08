@@ -69,7 +69,7 @@ class LoopFinder:
 
                 if operation == "None" or \
                         operation == "+0" or \
-                        operation == "-1":
+                        operation == "-0":
                     pass
                 elif operation[0] == "+":
                     contains_add = True

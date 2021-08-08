@@ -111,7 +111,7 @@ class ReachManager:
             # we work on the assumption that the edge must exist
             # otherwise a loop could have not been discovered
             op = self.automaton.get_edge_operation(prev_node, current_node)
-            if op.get_value() < 0:
+            if op is not None and op.get_value() < 0:
                 negative_op = True
 
             # analyse the current interval
@@ -155,8 +155,9 @@ class ReachManager:
             # analyse the transition
             # we work on the assumption that the edge must exist
             # otherwise a loop could have not been discovered
+
             op = self.automaton.get_edge_operation(prev_node, current_node)
-            if op.get_value() > 0:
+            if op is not None and op.get_value() > 0:
                 positive_op = True
 
             # analyse the current interval
