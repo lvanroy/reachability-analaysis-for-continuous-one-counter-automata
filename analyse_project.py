@@ -2,17 +2,22 @@ import subprocess
 import os
 import shutil
 
-import pandas as pd
+from os import listdir
+from os.path import isfile, join
 
 from pathlib import Path
 
-column_names = ["file", "function", "is representable", "has dead code"]
-df = pd.DataFrame(columns=column_names)
+from Automaton.DotReader import DotReader
+
+from Reach.ReachManager import ReachManager
+
+from Equations.EquationSolver import EquationSolver
 
 root_directory = Path("xrdp-devel")
 
 # make sure the directory is empty
 path = os.path.abspath("c-dead-code-analyser/TreePlots")
+
 if os.path.exists(path):
     shutil.rmtree(path)
 
@@ -29,7 +34,8 @@ with open('output.txt', 'w+') as output_stream:
                    "true", "false"]
 
         with open('err.txt', 'w+') as error_stream:
-            subprocess.call(command, env=os.environ, cwd=cwd, stderr=error_stream, stdout=output_stream)
+            subprocess.call(command, env=os.environ, cwd=cwd,
+                            stderr=error_stream, stdout=output_stream)
 
             error_stream.seek(0)
 
@@ -40,6 +46,30 @@ with open('output.txt', 'w+') as output_stream:
         errors = "\n".join(errors)
         if errors != "":
             print("Something went wrong, carrying on")
-            # print(errors)
-            # print()
-            # exit(-1)
+
+# only_files = [join(path, f) for f in listdir(path) if isfile(join(path, f))]
+# for file in only_files:
+#     if "reachability_automaton" in file:
+#         print(file)
+#         reader = DotReader(file)
+#
+#         automaton = reader.create_automaton()
+#
+#         automaton.set_lower_bound(-float('inf'))
+#         automaton.set_upper_bound(float('inf'))
+#         automaton.set_initial_value(0)
+#
+#         manager = ReachManager(automaton)
+#         manager.set_debug(False)
+#
+#         while not manager.is_finished():
+#             manager.update_automaton()
+#
+#         for node in automaton.get_nodes():
+#             if automaton.is_invisible(node):
+#                 continue
+#             if not manager.is_reachable(node):
+#                 fully_reachable = False
+#                 if node[0] == "Q":
+#                     print('Line {} was found to be not '
+#                           'reachable.'.format(node[1:]))

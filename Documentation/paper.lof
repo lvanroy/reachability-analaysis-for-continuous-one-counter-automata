@@ -1,0 +1,77 @@
+\boolfalse {citerequest}\boolfalse {citetracker}\boolfalse {pagetracker}\boolfalse {backtracker}\relax 
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {1}{\ignorespaces Overview of the automaton conversion process\relax }}{18}{figure.caption.10}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {2}{\ignorespaces An Assignment Expression with counter addition as value\relax }}{23}{figure.caption.11}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {3}{\ignorespaces An Assignment Expression with constant as value\relax }}{23}{figure.caption.12}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {4}{\ignorespaces The cleaned Abstract Syntax Tree for the divide function\relax }}{26}{figure.caption.13}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {5}{\ignorespaces Assignment of a value p to a counter\relax }}{28}{figure.caption.14}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {6}{\ignorespaces Example of an inequality expression\relax }}{29}{figure.caption.15}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {7}{\ignorespaces Example of a less than expression and a greater than expression\relax }}{30}{figure.caption.16}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {8}{\ignorespaces Example of an Iteration Statement\relax }}{32}{figure.caption.17}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {9}{\ignorespaces Example of if statements\relax }}{32}{figure.caption.18}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {10}{\ignorespaces Example of a switch statement\relax }}{33}{figure.caption.19}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {11}{\ignorespaces First node in the counter automaton\relax }}{35}{figure.caption.20}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {12}{\ignorespaces Automaton corresponding to the second line of \textit {gcm}\relax }}{36}{figure.caption.21}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {13}{\ignorespaces Counter automaton modelling the initial assignment of the counter\relax }}{36}{figure.caption.22}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {14}{\ignorespaces Counter automaton modelling the operation on line two\relax }}{36}{figure.caption.23}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {15}{\ignorespaces Counter automaton resulting from line four and five\relax }}{37}{figure.caption.24}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {16}{\ignorespaces Counter automaton resulting from line six\relax }}{37}{figure.caption.25}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {17}{\ignorespaces Counter automaton resulting from line seven up until line ten\relax }}{38}{figure.caption.26}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {18}{\ignorespaces Counter automaton resulting from line eleven up until line fourteen\relax }}{38}{figure.caption.27}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {19}{\ignorespaces Counter automaton resulting from line fifteen up until line eighteen\relax }}{39}{figure.caption.28}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {20}{\ignorespaces Counter automaton modelling the return on line twenty\relax }}{39}{figure.caption.29}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {21}{\ignorespaces Overview of the final resulting counter automaton\relax }}{40}{figure.caption.30}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {22}{\ignorespaces Transformation of an edge with a conditional label\relax }}{42}{figure.caption.31}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {23}{\ignorespaces Transformation of a node with an operational label\relax }}{43}{figure.caption.32}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {24}{\ignorespaces Example of a guarded automaton on which the succ function can be applied\relax }}{44}{figure.caption.33}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {25}{\ignorespaces Example of an automaton in which post acceleration evaluation is needed\relax }}{49}{figure.caption.37}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {26}{\ignorespaces Example of a transition before conversion\relax }}{50}{figure.caption.38}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {27}{\ignorespaces Example of a transition with an unsatisfiable node condition\relax }}{51}{figure.caption.39}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {28}{\ignorespaces Overview of the interval addition operation\relax }}{53}{figure.caption.40}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {29}{\ignorespaces Overview of the interval overlap operation\relax }}{53}{figure.caption.41}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {30}{\ignorespaces Overview of the interval intersection operation\relax }}{55}{figure.caption.42}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {31}{\ignorespaces Overview of the interval union operation\relax }}{56}{figure.caption.43}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {32}{\ignorespaces Overview of the interval assignment conditions\relax }}{57}{figure.caption.44}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {33}{\ignorespaces Overview of the can update condition\relax }}{58}{figure.caption.45}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {34}{\ignorespaces Example of an automaton with a loop\relax }}{59}{figure.caption.46}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {35}{\ignorespaces Example of an automaton with a loop that needs to be restricted\relax }}{60}{figure.caption.48}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {36}{\ignorespaces Overview of the loop condition\relax }}{61}{figure.caption.49}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {37}{\ignorespaces Function with normal argument format\relax }}{65}{figure.caption.52}%
+\defcounter {refsection}{0}\relax 
+\contentsline {figure}{\numberline {38}{\ignorespaces Function with struct argument format\relax }}{65}{figure.caption.53}%

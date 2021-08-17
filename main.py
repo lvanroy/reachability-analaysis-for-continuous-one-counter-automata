@@ -68,7 +68,8 @@ def analyze_code():
         if "reachability_automaton" in generated_file:
             if generated_file.endswith(".dot"):
                 original_path = os.path.join(path, generated_file)
-                new_path = os.path.join(os.getcwd(), "automaton-input", generated_file)
+                new_path = os.path.join(os.getcwd(), "automaton-input",
+                                        generated_file)
                 shutil.copy(original_path, new_path)
                 generated_files.append(new_path)
 
@@ -94,22 +95,25 @@ def analyze_reachability_with_interval(dot_file):
         manager.update_automaton()
 
     fully_reachable = True
+    not_reachable = list()
+    is_reachable = list()
 
-    if args['node'] is not None:
-        if not manager.is_reachable(args['node']):
+    for node in automaton.get_nodes():
+        if automaton.is_invisible(node):
+            continue
+        if node[0] != "Q":
+            continue
+        node_obj = automaton.get_node(node)
+        label = node_obj.get_label().split(".")[0]
+        if not manager.is_reachable(node) and label not in is_reachable:
             fully_reachable = False
-            if args['node'][0] == "Q":
+            if label not in not_reachable:
+                not_reachable.append(label)
                 print('Line {} was found to be not '
-                      'reachable.'.format(args['node'][1:]))
-    else:
-        for node in automaton.get_nodes():
-            if automaton.is_invisible(node):
-                continue
-            if not manager.is_reachable(node):
-                fully_reachable = False
-                if node[0] == "Q":
-                    print('Line {} was found to be not '
-                          'reachable.'.format(node[1:]))
+                      'reachable.'.format(label))
+        else:
+            if label not in is_reachable:
+                is_reachable.append(label)
 
     return fully_reachable
 
@@ -126,18 +130,29 @@ def analyze_reachability_with_formula(dot_file):
     automaton.set_upper_bound(args['high'])
     automaton.set_initial_value(args['start'])
 
-    solver = EquationSolver(automaton)
-    solver.analyse()
+    solver = EquationSolver(automaton, args['debug'])
+    reachable_nodes = solver.analyse()
 
-    fully_reachable = False
+    fully_reachable = True
+    not_reachable = list()
+    is_reachable = list()
 
-    # for node in solver.reachable:
-    #     if not solver.reachable[node]:
-    #         fully_reachable = False
-    #
-    #     if node[0] == "Q" and not solver.reachable[node]:
-    #         print('Line {} was found to be not '
-    #               'reachable.'.format(node[1:]))
+    for node in automaton.get_nodes():
+        if automaton.is_invisible(node):
+            continue
+        if node[0] != "Q":
+            continue
+        node_obj = automaton.get_node(node)
+        label = node_obj.get_label().split(".")[0]
+        if node not in reachable_nodes and label not in is_reachable:
+            fully_reachable = False
+            if label not in not_reachable:
+                not_reachable.append(label)
+                print('Line {} was found to be not '
+                      'reachable.'.format(label))
+        else:
+            if label not in is_reachable:
+                is_reachable.append(label)
 
     return fully_reachable
 
@@ -160,31 +175,34 @@ def bool2str(b):
         return 'false'
 
 
-parser = argparse.ArgumentParser(description='Process to analyze reachability of '
-                                             'lines of c code.')
-parser.add_argument('input', type=str, help='.dot file in case reach is the desired op, '
-                                            'c file in case c code or full is the desired op, '
-                                            'g4 file in case grammar is the desired op')
-parser.add_argument('op', default='c-code', help="select the desired operation out of "
-                                                 "{'reachability', 'c-code', 'full', 'grammar'}")
-parser.add_argument('--node', type=str, help='Node under test, defaults to all nodes if '
-                                             'no node is given')
-parser.add_argument('--start', type=int, default=0, help='The initial value for the '
-                                                         'counter (default 0)')
-parser.add_argument('--low', type=int, default=-float('inf'), help='The lower bound for the '
-                                                                   'counter (default -inf)')
-parser.add_argument('--high', type=int, default=float('inf'), help='The upper bound for the '
-                                                                   'counter (default inf)')
-parser.add_argument('--debug', type=str2bool, default=False, help='The debug mode adds additional '
-                                                                  'output when running the tool '
-                                                                  '(default False)')
-parser.add_argument('--trace', type=str2bool, default=False, help='Enable debug for the c code to automaton '
-                                                                  'implementation')
-parser.add_argument('--image', type=str2bool, default=False, help='Output all images representing the '
-                                                                  'generated automata (default false)')
-parser.add_argument('--method', type=str, default='interval', help='Select the method desired to analyse ' \
-                                                                   'reachability. Method must be either ' \
-                                                                   'interval or formula (default interval)')
+parser = argparse.ArgumentParser(description='Process to analyze reachability '
+                                             'of lines of c code.')
+parser.add_argument('input', type=str,
+                    help='.dot file in case reach is the desired op, c file in'
+                         ' case c code or full is the desired op, g4 '
+                         'file in case grammar is the desired op')
+parser.add_argument('op', default='c-code',
+                    help="select the desired operation out of {'reachability',"
+                         " 'c-code', 'full', 'grammar'}")
+parser.add_argument('--start', type=int, default=0,
+                    help='The initial value for the counter (default 0)')
+parser.add_argument('--low', type=int, default=-200000,
+                    help='The lower bound for the counter (default -200 000)')
+parser.add_argument('--high', type=int, default=200000,
+                    help='The upper bound for the counter (default 200 000)')
+parser.add_argument('--debug', type=str2bool, default=False,
+                    help='The debug mode adds additional output when '
+                         'running the tool (default False)')
+parser.add_argument('--trace', type=str2bool, default=False,
+                    help='Enable debug for the c code to '
+                         'automaton implementation')
+parser.add_argument('--image', type=str2bool, default=False,
+                    help='Output all images representing the generated '
+                         'automata (default false)')
+parser.add_argument('--method', type=str, default='interval',
+                    help='Select the method desired to analyse reachability. '
+                         'Method must be either interval or formula '
+                         '(default interval)')
 args = vars(parser.parse_args())
 
 if args['op'] not in ['reachability', 'c-code', 'full', 'grammar']:
@@ -221,7 +239,7 @@ if args['op'] == "full":
         if args['method'] == "interval":
             result = analyze_reachability_with_interval(file)
         else:
-            result = analyze_reachability_with_interval(file)
+            result = analyze_reachability_with_formula(file)
 
         reachabilities[file] = result
 
@@ -247,5 +265,5 @@ if args['op'] == "full":
         # retrieve the function name
         function = "_".join(tokens).split(".dot")[0]
 
-        print("Reachability was found to be {} for the function {} in the file {}"
-              .format(reachable, function, code_file))
+        print("Reachability was found to be {} for the function {} in the "
+              "file {}".format(reachable, function, code_file))

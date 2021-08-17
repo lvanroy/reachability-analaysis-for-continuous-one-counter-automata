@@ -6,13 +6,15 @@ import operator
 
 
 class EquationSolver:
-    def __init__(self, automaton):
+    def __init__(self, automaton, trace):
         self.automaton = automaton
-        print(self.automaton)
+        self.initial = self.automaton.get_initial_node()
         self.s = Solver()
-        self.s.set("timeout", 300000)
+        self.s.set("timeout", 600000)
         self.auxiliary_counter = 0
         self.nodes = list(self.automaton.get_visible_nodes().keys())
+
+        self.trace = trace
 
         # store all the node conditions defined within the automaton
         # this list will be used to trace the bounds implied by the
@@ -77,8 +79,6 @@ class EquationSolver:
         self.add_successor_condition()
         self.add_reachability_condition()
 
-        print(self.nodes)
-
         reachable_nodes = list()
 
         # start solving for each of the intervals
@@ -88,7 +88,8 @@ class EquationSolver:
             cur_index = self.nodes.index(cur_node)
             self.s.push()
             self.add_final_condition(cur_index)
-            self.solve()
+            if self.trace:
+               self.solve()
             if self.s.check() == sat:
                 reachable_nodes.append(cur_node)
                 m = self.s.model()
@@ -101,6 +102,8 @@ class EquationSolver:
             self.s.pop()
 
         print(reachable_nodes)
+
+        return reachable_nodes
 
     # ensure that the node under test is not empty
     def add_final_condition(self, cur_node):
@@ -269,18 +272,15 @@ class EquationSolver:
 
             # get the current node under eval
             node = self.nodes[index]
-            print(node)
             base_sub_index = index * self.nr_of_intervals * 4
             base_edge_index = index * self.nr_of_intervals
 
             # get the prev node in the loop
             prev_index = indexes[(i - 1) % len(indexes)]
-            print(prev_index)
             prev_node = self.nodes[prev_index]
 
             # get the edge associated with this node sequence
             edge = self.automaton.get_outgoing_edges(prev_node)[node]
-            print(edge)
             edge_index = self.edge_mapping[edge]
 
             # consider the case in which the loop is simply not taken
@@ -379,8 +379,6 @@ class EquationSolver:
             cond_type = self.conditions[cond_base_index]
             cond_value = self.conditions[cond_base_index + 1]
 
-            print("{} {}".format(cond_type, cond_value))
-
             # track the conditions for each of the sub intervals
             or_conditions = dict()
             for i in range(self.nr_of_intervals):
@@ -397,9 +395,10 @@ class EquationSolver:
                 init_val = self.automaton.get_initial_value()
                 cond = list()
                 cond += self.assign(interval, init_val, init_val, 1, 1)
-                cond.append(And(self.is_in_bounds(interval, interval,
+
+                cond.append(And(self.is_in_bounds(interval,
                                                   (cond_type, cond_value), y)))
-                cond.append(self.used_edges[0] == -1)
+                cond.append(self.used_edges[node * self.nr_of_intervals] == -1)
                 or_conditions[0].append(And(cond))
 
             # go over all the edges that end in the current node
@@ -412,8 +411,6 @@ class EquationSolver:
                 if end != node:
                     continue
 
-                print("{} {} {}".format(start, op, end))
-
                 vec_name = 'y{}'.format(self.auxiliary_counter)
                 self.auxiliary_counter += 1
                 y = IntVector(vec_name, 4)
@@ -424,6 +421,25 @@ class EquationSolver:
                 y2 = IntVector(vec_name2, 4)
                 self.y += y2
 
+                # intersect this with the automaton bound
+                if self.automaton.get_lower_bound() == -float('inf'):
+                    incl_low = 2
+                    low = 0
+                else:
+                    low = self.automaton.get_lower_bound()
+                    incl_low = 0
+
+                if self.automaton.get_upper_bound() == float('inf'):
+                    incl_high = 2
+                    high = 0
+                else:
+                    incl_high = 0
+                    high = self.automaton.get_upper_bound()
+
+                interval = [low, high, incl_low, incl_high]
+
+                y_bound_cond = self.intersect_vec(y, interval, y2)
+
                 base_start = start * self.nr_of_intervals * 4
 
                 # ensure that there is at least one edge for which
@@ -431,7 +447,7 @@ class EquationSolver:
                 # interval can be generated
                 for new_int in range(self.nr_of_intervals):
 
-                    if node == 0 and new_int == 0:
+                    if self.nodes[node] == self.initial and new_int == 0:
                         continue
 
                     unique_update = list()
@@ -466,8 +482,9 @@ class EquationSolver:
                                                       end_interval,
                                                       (cond_type, cond_value),
                                                       y, y2)
+                        update.append(y_bound_cond)
 
-                        unique_update.append(update)
+                        unique_update.append(And(update))
 
                         # allow a way out in case the current interval is empty
                         # if not every interval will be forced to be filled
@@ -482,12 +499,9 @@ class EquationSolver:
 
                         or_conditions[new_int].append(final_cond)
 
-                print("{} -> {} -> {}".format(start, op, end))
-
             for key in or_conditions.keys():
                 condition = or_conditions[key]
                 if condition:
-                    # print(len(or_condition))
                     self.s.add(Or(condition))
                 else:
                     end_index = base_end + key * 4
@@ -573,31 +587,12 @@ class EquationSolver:
 
         # the sum is now stored in y, intersect this interval with both node
         # and automaton bounds
-        update_condition += self.is_in_bounds(y, end, node_cond, y2)
+        update_condition += self.is_in_bounds(end, node_cond, y2)
 
-        return And(update_condition)
+        return update_condition
 
-    def is_in_bounds(self, start, end, node_cond, y2):
+    def is_in_bounds(self, end, node_cond, y2):
         condition = list()
-
-        # intersect this with the automaton bound
-        if self.automaton.get_lower_bound() == -float('inf'):
-            incl_low = 2
-            low = 0
-        else:
-            low = self.automaton.get_lower_bound()
-            incl_low = 0
-
-        if self.automaton.get_upper_bound() == float('inf'):
-            incl_high = 2
-            high = 0
-        else:
-            incl_high = 0
-            high = self.automaton.get_upper_bound()
-
-        interval = [low, high, incl_low, incl_high]
-
-        condition.append(self.intersect_vec(start, interval, y2))
 
         # the result is now stored in y2
         # intersect this with the node bound
@@ -641,7 +636,6 @@ class EquationSolver:
                 print("\tNode: {}".format(self.nodes[i]))
                 print("\treachability: {}".format(m[self.reachable[i]]))
                 base_index = i * self.nr_of_intervals * 4
-                # base_y = 0
                 base_edge = i * self.nr_of_intervals
                 for j in range(self.nr_of_intervals):
                     int_index = base_index + j * 4
@@ -654,26 +648,10 @@ class EquationSolver:
                     if not empty(b, t, i_b, i_t):
                         print("\t\t[{}, {}, {}, {}] using {}".
                               format(b, t, i_b, i_t, edge))
-                    # else:
-                    #     print("\t\t[{}, {}, {}, {}] using {}".
-                    #           format(b, t, i_b, i_t, edge))
 
             print("Variables")
             for var in self.vars:
                 print("\t{}: {}".format(var, m[self.vars[var]]))
-
-                # if i != 0:
-                #     y1 = m[self.y[base_y]]
-                #     y2 = m[self.y[base_y + 1]]
-                #     y3 = m[self.y[base_y + 2]]
-                #     y4 = m[self.y[base_y + 3]]
-                #     y5 = m[self.y[base_y + 4]]
-                #     y6 = m[self.y[base_y + 5]]
-                #     y7 = m[self.y[base_y + 6]]
-                #     y8 = m[self.y[base_y + 7]]
-                #
-                #     print("\t\ty1: [{}, {}, {}, {}]".format(y1, y2, y3, y4))
-                #     print("\t\ty2: [{}, {}, {}, {}]".format(y5, y6, y7, y8))
 
         else:
             print("No solution found")

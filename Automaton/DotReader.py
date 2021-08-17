@@ -283,7 +283,7 @@ class DotReader:
             # iterate over the different characters within the label
             # differentiate between constant and expression
             for char in sub_expr:
-                if char.isalnum() or (char in ["+", "-"] and op != ""):
+                if char not in ["<", "=", ">", "+", "-"]:
                     constant += char
                 else:
                     op += char
