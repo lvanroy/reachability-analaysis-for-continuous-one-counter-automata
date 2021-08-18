@@ -6,15 +6,13 @@ import operator
 
 
 class EquationSolver:
-    def __init__(self, automaton, trace):
+    def __init__(self, automaton):
         self.automaton = automaton
         self.initial = self.automaton.get_initial_node()
         self.s = Solver()
         self.s.set("timeout", 600000)
         self.auxiliary_counter = 0
         self.nodes = list(self.automaton.get_visible_nodes().keys())
-
-        self.trace = trace
 
         # store all the node conditions defined within the automaton
         # this list will be used to trace the bounds implied by the
@@ -88,8 +86,7 @@ class EquationSolver:
             cur_index = self.nodes.index(cur_node)
             self.s.push()
             self.add_final_condition(cur_index)
-            if self.trace:
-               self.solve()
+            self.solve()
             if self.s.check() == sat:
                 reachable_nodes.append(cur_node)
                 m = self.s.model()
