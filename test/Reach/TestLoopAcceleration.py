@@ -147,7 +147,8 @@ class TestLoopAcceleration(unittest.TestCase):
         self.assert_interval_matches("Q0", "Q1", "[-202, 0)")
 
     def test_accel_loop_up_down_with_no_bounds(self):
-        self.initialise_automaton("input/simple_unbounded_upwards_downwards_loop.dot")
+        self.initialise_automaton(
+            "input/simple_unbounded_upwards_downwards_loop.dot")
         self.assert_interval_matches("Q0", "Q0", "[0, 0]")
         self.assert_interval_matches("Q1", "Q0", None)
         self.assert_interval_matches("Q0", "Q1", None)

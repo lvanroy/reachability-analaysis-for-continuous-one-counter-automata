@@ -1,6 +1,5 @@
 import unittest
 
-from Reach.Interval import Interval
 from Reach.Intervals import Intervals
 
 

@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from z3 import *
+from z3 import sat, unsat
 
 from Automaton.DotReader import DotReader
 
@@ -35,64 +35,8 @@ class TestFullAnalysis(unittest.TestCase):
         self.eq_solver.add_initial_condition()
         self.eq_solver.add_sequential_condition()
 
-    def print(self):
-        if self.solver.check() == sat:
-            m = self.solver.model()
-
-            condition_to_string = {
-                0: ">=",
-                1: "<=",
-                2: "==",
-                3: "no condition"
-            }
-
-            print("m = {}".format(m[self.eq_solver.m]))
-
-            print("\nparameters:")
-            for val in self.eq_solver.parameters:
-                print("{} = {}".format(val, m[self.eq_solver.parameters[val]]))
-
-            print("\ntransitions:")
-            for i in range(len(self.eq_solver.nodes)-1):
-                print("{}, {}, {}".format(
-                    self.eq_solver.nodes[m[self.eq_solver.transitions[i * 3]].as_long()],
-                    m[self.eq_solver.transitions[(i * 3) + 1]],
-                    self.eq_solver.nodes[m[self.eq_solver.transitions[(i * 3) + 2]].as_long()]
-                ))
-                condition = condition_to_string[m[self.eq_solver.selected_conditions[i * 2]].as_long()]
-                if condition == "no condition":
-                    print("no end condition")
-                else:
-                    print("end cond: {} {}".format(
-                        condition,
-                        m[self.eq_solver.selected_conditions[(i * 2) + 1]].as_long()
-                    ))
-
-            print("\nintervals:")
-            for r in range(len(self.eq_solver.nodes)):
-                interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * r
-                print("Round {}".format(r))
-                for j in range(len(self.eq_solver.nodes)):
-                    start_index = interval_offset + j * 4
-                    b = self.eq_solver.intervals[start_index]
-                    t = self.eq_solver.intervals[start_index + 1]
-                    i_l = self.eq_solver.intervals[start_index + 2]
-                    i_h = self.eq_solver.intervals[start_index + 2]
-                    if m[b] is None or m[t] is None:
-                        print("s{} = None".format(j))
-                        continue
-                    print("s{}= [{}, {}, {}, {}]".format(
-                        j,
-                        m[b].as_long(),
-                        m[t].as_long(),
-                        m[i_l].as_long(),
-                        m[i_h].as_long()
-                    ))
-        else:
-            print("No solution found")
-        print("===========")
-
-    def verify_interval_matches(self, interval, index, b_ex, t_ex, il_ex, ih_ex):
+    def verify_interval_matches(self, interval, index,
+                                b_ex, t_ex, il_ex, ih_ex):
         interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * interval
         start_index = interval_offset + index * 4
 

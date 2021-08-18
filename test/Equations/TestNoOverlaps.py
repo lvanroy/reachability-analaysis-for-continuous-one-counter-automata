@@ -1,6 +1,6 @@
 import unittest
 
-from z3 import *
+from z3 import IntVector, sat, unsat
 
 from Automaton.Automaton import Automaton
 
@@ -180,7 +180,3 @@ class TestNoOverlaps(unittest.TestCase):
                                                    self.vector2))
 
         self.assertEqual(self.solver.check(), sat)
-
-
-
-

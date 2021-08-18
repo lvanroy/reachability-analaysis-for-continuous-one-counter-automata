@@ -1,6 +1,6 @@
 import unittest
 
-from z3 import *
+from z3 import IntVector
 
 from Automaton.Automaton import Automaton
 
@@ -91,4 +91,3 @@ class TestAdd(unittest.TestCase):
                                    self.result))
 
         self.verify_result(-1, 1, 0, 0)
-

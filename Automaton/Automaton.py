@@ -8,14 +8,14 @@ from Automaton.LoopFinder import LoopFinder, Loop
 
 class Automaton:
     def __init__(self, name, low, high):
-        self.name = name                      # the name of the Automaton
-        self.nodes = dict()                   # a node name to node object mapping
-        self.edges = dict()                   # a start node name to edge object mapping
-        self.initial_node = None              # the initial node of the Automaton
-        self.lower_bound = low                # the lower bound of the Automaton
-        self.upper_bound = high               # the upper bound of the Automaton
-        self.loops: List[Loop] = list()       # the loops within the Automaton
-        self.initial_value = 0                # the initial counter value
+        self.name = name                  # the name of the Automaton
+        self.nodes = dict()               # map node name to node object
+        self.edges = dict()               # map node name to edge object
+        self.initial_node = None          # the initial node of the Automaton
+        self.lower_bound = low            # the lower bound of the Automaton
+        self.upper_bound = high           # the upper bound of the Automaton
+        self.loops: List[Loop] = list()   # the loops within the Automaton
+        self.initial_value = 0            # the initial counter value
 
     # -- NODES
 

@@ -12,7 +12,8 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         base = os.path.dirname(__file__)
         return os.path.join(base, file)
 
-    def initialise_automaton(self, file_name, min=-float('inf'), max=float('inf'), initial=0):
+    def initialise_automaton(self, file_name,
+                             min=-float('inf'), max=float('inf'), initial=0):
         file_name = self.build_file_path(file_name)
         reader = DotReader(file_name)
         automaton = reader.create_automaton()
@@ -53,7 +54,8 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assert_interval_matches("s2", "s1", "(0, 201]")
 
     def test_bounded_automaton(self):
-        self.initialise_automaton("input/one_node_bounded_automaton.dot", -50, 150)
+        self.initialise_automaton("input/one_node_bounded_automaton.dot",
+                                  -50, 150)
 
         while not self.manager.is_finished():
             self.manager.update_automaton()
@@ -65,7 +67,8 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assert_interval_matches("s2", "s1", "(0, 150]")
 
     def test_impossible_automaton(self):
-        self.initialise_automaton("input/one_node_bounded_automaton.dot", 50, 150)
+        self.initialise_automaton("input/one_node_bounded_automaton.dot",
+                                  50, 150)
 
         while not self.manager.is_finished():
             self.manager.update_automaton()
@@ -81,7 +84,8 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assertFalse(self.manager.is_reachable("s2"))
 
     def test_mutated_initial_value(self):
-        self.initialise_automaton("input/one_node_bounded_automaton.dot", -50, 150, 5)
+        self.initialise_automaton("input/one_node_bounded_automaton.dot",
+                                  -50, 150, 5)
 
         while not self.manager.is_finished():
             self.manager.update_automaton()
@@ -121,6 +125,3 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assert_interval_matches("Q11", "Q6", "(-inf, inf)")
         self.assert_interval_matches("_2", "Q11", "[5, inf)")
         self.assert_interval_matches("Q13", "Q12", "(5, inf)")
-
-
-

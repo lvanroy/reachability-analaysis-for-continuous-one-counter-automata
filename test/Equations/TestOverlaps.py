@@ -1,6 +1,6 @@
 import unittest
 
-from z3 import *
+from z3 import IntVector, sat, unsat
 
 from Automaton.Automaton import Automaton
 

@@ -1,4 +1,4 @@
-from typing import List, Type
+from typing import List
 
 from Reach.Interval import Interval
 
@@ -46,7 +46,8 @@ class Intervals:
 
                 interval = self.intervals[i]
 
-                # see if the current interval is completely to the left of the uniend
+                # see if the current interval is completely to the left of
+                # the uniend
                 if interval.get_high_bound() < low:
                     continue
 
@@ -55,7 +56,8 @@ class Intervals:
                     # if the uniend is strictly below the current interval
                     # we insert the uniend directly below the current interval
                     if interval.get_low_bound() > high:
-                        self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
+                        self.intervals.insert(i, Interval(low, incl_low,
+                                                          high, incl_high))
                         inserted = True
                         i += 1
                         break
@@ -74,16 +76,18 @@ class Intervals:
                             high = interval.get_high_bound()
                             incl_high = interval.is_high_inclusive()
                             self.intervals.pop(i)
-                            self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
+                            self.intervals.insert(i, Interval(low, incl_low,
+                                                              high, incl_high))
                             inserted = True
                             break
                         else:
-                            self.intervals.insert(i, Interval(low, incl_low, high, incl_high))
+                            self.intervals.insert(i, Interval(low, incl_low,
+                                                              high, incl_high))
                             inserted = True
                             break
 
-                    # the uniend extends the current interval in the lower direction
-                    # update the interval to reflect this
+                    # the uniend extends the current interval in the lower
+                    # direction update the interval to reflect this
                     if interval.get_low_bound() > low:
                         interval.update_low(low, incl_low)
 
@@ -107,8 +111,8 @@ class Intervals:
                         else:
                             continue
 
-                    # if the current interval extends the uniend in the lower direction
-                    # update the uniend to reflect this
+                    # if the current interval extends the uniend in the lower
+                    # direction update the uniend to reflect this
                     if interval.get_low_bound() < low:
                         low = interval.get_low_bound()
                         incl_low = interval.is_low_inclusive()
@@ -193,7 +197,8 @@ class Intervals:
                 i += 1
                 continue
 
-            if new_low_bound < old_low_bound and new_high_bound > old_high_bound:
+            if new_low_bound < old_low_bound and \
+                    new_high_bound > old_high_bound:
                 j += 1
                 continue
 
@@ -205,7 +210,8 @@ class Intervals:
                 if not new_incl_high and old_incl_high:
                     break
 
-            if old_low_bound < new_low_bound or old_high_bound > new_high_bound:
+            if old_low_bound < new_low_bound or \
+                    old_high_bound > new_high_bound:
                 break
 
             j += 1

@@ -46,7 +46,8 @@ class TestCreateAutomaton(unittest.TestCase):
         self.assertTrue(automaton.edge_exists("Q3", "Q4"))
         self.assertTrue(automaton.edge_exists("Q2", "Q4"))
 
-        self.assertEqual(automaton.get_edge_label("Q2", "Q4"), "this is a random label")
+        self.assertEqual(automaton.get_edge_label("Q2", "Q4"),
+                         "this is a random label")
 
     def test_graph_edges(self):
         file_name = self.build_file_path("input/simple_graph.dot")
@@ -117,7 +118,8 @@ class TestCreateAutomaton(unittest.TestCase):
         self.assertEqual("node5", str(automaton.get_node_label("q5")))
 
     def test_graph_with_invalid_condition(self):
-        file_name = self.build_file_path("input/unsupported_condition_types_graph.dot")
+        file_name = \
+            self.build_file_path("input/unsupported_condition_types_graph.dot")
         reader = DotReader(file_name)
         automaton = reader.create_automaton()
 
@@ -158,7 +160,8 @@ class TestCreateAutomaton(unittest.TestCase):
         self.assertEqual("node5", str(automaton.get_node_label("q5")))
 
     def test_graph_with_invalid_op(self):
-        file_name = self.build_file_path("input/unsupported_op_types_graph.dot")
+        file_name = \
+            self.build_file_path("input/unsupported_op_types_graph.dot")
         reader = DotReader(file_name)
         automaton = reader.create_automaton()
 

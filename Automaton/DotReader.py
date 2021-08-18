@@ -57,7 +57,8 @@ class DotReader:
                 # start of a graph
                 if tokens[0] == "digraph":
                     automaton_name = tokens[1].replace("{", "")
-                    self.automaton = Automaton(automaton_name, float("-inf"), float("inf"))
+                    self.automaton = Automaton(automaton_name,
+                                               float("-inf"), float("inf"))
                     continue
 
                 # if a rankdir is specified, just continue
@@ -71,6 +72,7 @@ class DotReader:
                 nodes = list()
 
                 edge = False
+                node = None
 
                 i = -1
                 while True:
@@ -98,56 +100,62 @@ class DotReader:
                         # ensure that we do not evaluate the label again
                         i += 1
 
-                        # verify whether or not we are dealing with an expression
-                        expression = None
+                        # verify whether or not we are dealing with an
+                        # expression
+                        expr = None
                         is_condition = False
-                        if self.operation_matcher.match(label.replace(" ", "")):
-                            label = label.replace(" ", "")
-                            expression = self.convert_label_to_expression(label)[0]
-                        if self.condition_matcher.match(label.replace(" ", "")):
-                            label = label.replace(" ", "")
-                            expression = self.convert_label_to_expression(label)[0]
+                        label = label.replace(" ", "")
+                        if self.operation_matcher.match(label):
+                            expr = self.convert_label_to_expression(label)[0]
+                        if self.condition_matcher.match(label):
+                            expr = self.convert_label_to_expression(label)[0]
                             is_condition = True
 
                         if edge:
                             # if is_condition is true, expression must be
-                            # true too so need to do an extra evaluation
-                            # insert an extra node to which we will attach the condition
+                            # true too so need to do an extra evaluation insert
+                            # an extra node to which we will attach the
+                            # condition
                             if is_condition:
                                 prev_node = nodes[0]
                                 for j in range(1, len(nodes)):
                                     next_node = nodes[j]
 
-                                    self.set_edge_operation(prev_node, next_node, expression)
+                                    self.set_edge_operation(prev_node,
+                                                            next_node, expr)
                                     edge = self.get_edge(prev_node, next_node)
                                     self.conditional_edges.append(edge)
 
                                     prev_node = next_node
 
-                            # if the expression is an operation we can simply add
-                            # the expression to the edge
+                            # if the expression is an operation we can simply
+                            # add the expression to the edge
                             else:
                                 prev_node = nodes[0]
                                 for j in range(1, len(nodes)):
                                     next_node = nodes[j]
 
-                                    if expression is not None:
-                                        self.set_edge_operation(prev_node, next_node, expression)
+                                    if expr is not None:
+                                        self.set_edge_operation(prev_node,
+                                                                next_node,
+                                                                expr)
                                     else:
-                                        self.set_edge_label(prev_node, next_node, label)
+                                        self.set_edge_label(prev_node,
+                                                            next_node, label)
 
                                     prev_node = next_node
                         else:
                             # if we  did encounter an expression that was
-                            # not a condition we will add an edge and a secondary node
-                            # we will attach the found expression to the found edge
-                            if expression is not None and not is_condition:
-                                self.set_node_condition(node, expression)
+                            # not a condition we will add an edge and a
+                            # secondary node we will attach the found
+                            # expression to the found edge
+                            if expr is not None and not is_condition:
+                                self.set_node_condition(node, expr)
                                 node_obj = self.get_node(node)
                                 self.operational_nodes.append(node_obj)
 
-                            elif expression is not None:
-                                self.set_node_condition(node, expression)
+                            elif expr is not None:
+                                self.set_node_condition(node, expr)
 
                             else:
                                 self.set_node_label(node, label)
@@ -285,6 +293,8 @@ class DotReader:
             for char in sub_expr:
                 if char not in ["<", "=", ">", "+", "-"]:
                     constant += char
+                elif op != "" and char in ["+", "-"]:
+                    constant += char
                 else:
                     op += char
 
@@ -323,7 +333,8 @@ class DotReader:
                 if line[i+1] == ' ':
                     line = self.replace_str_index(line, i, '')
                 # if we do not have a space after the comma
-                # replace the comma by a space so that the tokens are properly split again
+                # replace the comma by a space so that the tokens are
+                # properly split again
                 else:
                     line = self.replace_str_index(line, i, ' ')
 

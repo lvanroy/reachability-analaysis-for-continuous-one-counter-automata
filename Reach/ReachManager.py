@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict
 from copy import deepcopy
 
 from Reach.Reach import Reach
@@ -16,11 +16,13 @@ class ReachManager:
         self.initial_value = automaton.get_initial_value()
 
         # the reaches dict tracks the reachability data for each state
-        #   this data will always be up to date and will be directly updated during the post
+        # this data will always be up to date and will be directly
+        # updated during the post
         self.reaches: Dict[str, Reach] = dict()
 
-        # the intervals dict will track the reachability data at the start of each post update
-        #   the dict will be updated at the end of every post operation, rather than during
+        # the intervals dict will track the reachability data at the start
+        # of each post update the dict will be updated at the end of every
+        # post operation, rather than during
         self.intervals: Dict[str, Dict[str, Intervals]] = dict()
 
         # keep track of the number of steps we have encountered
@@ -50,7 +52,8 @@ class ReachManager:
                 continue
             self.add_state(node)
             if self.automaton.is_initial(node):
-                self.add_interval(node, node, self.initial_value, True, self.initial_value, True)
+                self.add_interval(node, node, self.initial_value,
+                                  True, self.initial_value, True)
 
     def initialise_intervals(self):
         for node in self.automaton.get_nodes():
@@ -99,7 +102,8 @@ class ReachManager:
 
     def is_ready_for_down_acceleration(self, loop):
         # track whether or not there is an actual step downwards
-        # in case all infimums did not change this is not a downward acceleration
+        # in case all infimums did not change this is not
+        # a downward acceleration
         decreased = False
         negative_op = False
 
@@ -116,25 +120,26 @@ class ReachManager:
 
             # analyse the current interval
             reach = self.reaches[current_node]
-            current_interval = reach.get_reachable_set(prev_node)
-            current_inf = current_interval.get_inf()
-            current_inc = current_interval.is_inf_inclusive()
+            cur_interval = reach.get_reachable_set(prev_node)
+            cur_inf = cur_interval.get_inf()
+            cur_inc = cur_interval.is_inf_inclusive()
 
             # analyze the previous interval
-            previous_interval = self.intervals[current_node][prev_node]
-            previous_inf = previous_interval.get_inf()
-            previous_inc = previous_interval.is_inf_inclusive()
+            prev_interval = self.intervals[current_node][prev_node]
+            prev_inf = prev_interval.get_inf()
+            prev_inc = prev_interval.is_inf_inclusive()
 
             # if the infimum increased this is not accelerating downwards
-            if previous_inf < current_inf:
+            if prev_inf < cur_inf:
                 return False
 
             # detect decrease in the case that the infimum decreased
-            if previous_inf > current_inf:
+            if prev_inf > cur_inf:
                 decreased = True
 
-            # detect decrease in the case that the infimum remained the same but became inclusive
-            if current_inf == previous_inf and current_inc and not previous_inc:
+            # detect decrease in the case that the infimum remained the same
+            # but became inclusive
+            if cur_inf == prev_inf and cur_inc and not prev_inc:
                 decreased = True
 
             # do nothing in the case that the infimum remained the exact same
@@ -162,25 +167,26 @@ class ReachManager:
 
             # analyse the current interval
             reach = self.reaches[current_node]
-            current_interval = reach.get_reachable_set(prev_node)
-            current_sup = current_interval.get_sup()
-            current_inc = current_interval.is_sup_inclusive()
+            cur_interval = reach.get_reachable_set(prev_node)
+            cur_sup = cur_interval.get_sup()
+            cur_inc = cur_interval.is_sup_inclusive()
 
             # analyze the previous interval
-            previous_interval = self.intervals[current_node][prev_node]
-            previous_sup = previous_interval.get_sup()
-            previous_inc = previous_interval.is_sup_inclusive()
+            prev_interval = self.intervals[current_node][prev_node]
+            prev_sup = prev_interval.get_sup()
+            prev_inc = prev_interval.is_sup_inclusive()
 
             # if the supremum decreased this is not accelerating upwards
-            if current_sup < previous_sup:
+            if cur_sup < prev_sup:
                 return False
 
             # detect increase in the case that the supremum decreased
-            if current_sup > previous_sup:
+            if cur_sup > prev_sup:
                 increased = True
 
-            # detect increase in the case that the supremum remained the same but became inclusive
-            if current_sup == previous_sup and current_inc and not previous_inc:
+            # detect increase in the case that the supremum remained the
+            # same but became inclusive
+            if cur_sup == prev_sup and cur_inc and not prev_inc:
                 increased = True
 
             # do nothing in the case that the supremum remained the exact same
@@ -191,14 +197,16 @@ class ReachManager:
     def check_for_accelerations(self):
         for loop in self.loops:
             nodes = loop.get_nodes()
-            upper_bound = None
-            upper_node_bound = None
-            upper_bound_node = None
-            upper_bound_preceding_node = None
-            lower_bound = None
-            lower_node_bound = None
-            lower_bound_node = None
-            lower_bound_preceding_node = None
+
+            top_bound_dif = None
+            top_bound = None
+            top_bounded_node = None
+            top_prec_node = None
+
+            low_bound_dif = None
+            low_bound = None
+            low_bounded_node = None
+            low_prec_node = None
 
             # verify whether or not the entire chain has been discovered
             # track the min encountered value for upper bound - v
@@ -235,68 +243,53 @@ class ReachManager:
                 # make sure that both bounds are correctly identified
                 # in case of infinity there is no use for further evaluation
                 # and we directly end the evaluation for that side here
-                current_upper_bound = None
-                current_lower_bound = None
                 if condition is not None:
                     operation = condition.get_operation()
                     value = condition.get_value()
                     if operation == "<=":
-                        current_upper_bound = value
-                        if lower_bound is None:
-                            lower_bound = -float('inf')
-                            lower_bound_node = current_node
-                            lower_bound_preceding_node = prev_node
+                        cur_upper_bound = value
+                        cur_lower_bound = -float('inf')
                     elif operation == ">=":
-                        current_lower_bound = value
-                        if upper_bound is None:
-                            upper_bound = float('inf')
-                            upper_bound_node = current_node
-                            upper_bound_preceding_node = prev_node
+                        cur_lower_bound = value
+                        cur_upper_bound = float('inf')
                     else:
-                        current_upper_bound = value
-                        current_lower_bound = value
+                        cur_upper_bound = value
+                        cur_lower_bound = value
 
                 # no condition so the node bound is (-inf, inf)
                 else:
-                    if upper_bound is None:
-                        upper_bound = float('inf')
-                        upper_bound_node = current_node
-                        upper_bound_preceding_node = prev_node
-                    if lower_bound is None:
-                        lower_bound = -float('inf')
-                        lower_bound_node = current_node
-                        lower_bound_preceding_node = prev_node
-                    continue
+                    cur_upper_bound = float('inf')
+                    cur_lower_bound = -float('inf')
 
                 # get the current max value
                 # if not inclusive we can simply subtract 0.1 as we work
                 # under the assumption that all values are integers
-                if current_upper_bound is not None:
+                if cur_upper_bound is not None:
                     if reach_set.is_sup_inclusive():
-                        current_max_v = reach_set.get_sup()
+                        cur_max_v = reach_set.get_sup()
                     else:
-                        current_max_v = reach_set.get_sup() - 0.1
-                    current_upper_dif = current_upper_bound - current_max_v
-                    if upper_bound is None or current_upper_dif < upper_bound:
-                        upper_bound = current_upper_dif
-                        upper_node_bound = current_upper_bound
-                        upper_bound_node = current_node
-                        upper_bound_preceding_node = prev_node
+                        cur_max_v = reach_set.get_sup() - 0.1
+                    cur_upper_dif = cur_upper_bound - cur_max_v
+                    if top_bound_dif is None or cur_upper_dif < top_bound_dif:
+                        top_bound_dif = cur_upper_dif
+                        top_bound = cur_upper_bound
+                        top_bounded_node = current_node
+                        top_prec_node = prev_node
 
                 # get the current min value
                 # if not inclusive we can simply subtract 0.1 as we work
                 # under the assumption that all values are integers
-                if current_lower_bound is not None:
+                if cur_lower_bound is not None:
                     if reach_set.is_inf_inclusive():
-                        current_min_v = reach_set.get_inf()
+                        cur_min_v = reach_set.get_inf()
                     else:
-                        current_min_v = reach_set.get_inf() + 0.1
-                    current_lower_dif = current_min_v - current_lower_bound
-                    if lower_bound is None or current_lower_dif < lower_bound:
-                        lower_bound = current_lower_dif
-                        lower_node_bound = current_lower_bound
-                        lower_bound_node = current_node
-                        lower_bound_preceding_node = prev_node
+                        cur_min_v = reach_set.get_inf() + 0.1
+                    cur_lower_dif = cur_min_v - cur_lower_bound
+                    if low_bound_dif is None or cur_lower_dif < low_bound_dif:
+                        low_bound_dif = cur_lower_dif
+                        low_bound = cur_lower_bound
+                        low_bounded_node = current_node
+                        low_prec_node = prev_node
 
             # if the loop was not ready for acceleration, simply continue
             if not loop_discovered:
@@ -304,23 +297,23 @@ class ReachManager:
 
             # accelerate the upper bound
             if self.is_ready_for_up_acceleration(nodes):
-                reach = self.reaches[upper_bound_node]
-                if upper_bound == float('inf'):
-                    reach.update_sup(upper_bound_preceding_node, float('inf'))
-                    reach.update_higher_bound_inclusive(upper_bound_preceding_node, False)
+                reach = self.reaches[top_bounded_node]
+                if top_bound_dif == float('inf'):
+                    reach.update_sup(top_prec_node, float('inf'))
+                    reach.update_higher_bound_inclusive(top_prec_node, False)
                 else:
-                    reach.update_sup(upper_bound_preceding_node, upper_node_bound)
-                    reach.update_higher_bound_inclusive(upper_bound_preceding_node, True)
+                    reach.update_sup(top_prec_node, top_bound)
+                    reach.update_higher_bound_inclusive(top_prec_node, True)
 
             # accelerate the lower bound
             if self.is_ready_for_down_acceleration(nodes):
-                reach = self.reaches[lower_bound_node]
-                if lower_bound == -float('inf'):
-                    reach.update_inf(lower_bound_preceding_node, -float('inf'))
-                    reach.update_lower_bound_inclusive(lower_bound_preceding_node, False)
+                reach = self.reaches[low_bounded_node]
+                if low_bound_dif == -float('inf'):
+                    reach.update_inf(low_prec_node, -float('inf'))
+                    reach.update_lower_bound_inclusive(low_prec_node, False)
                 else:
-                    reach.update_inf(lower_bound_preceding_node, lower_node_bound)
-                    reach.update_lower_bound_inclusive(lower_bound_preceding_node, True)
+                    reach.update_inf(low_prec_node, low_bound)
+                    reach.update_lower_bound_inclusive(low_prec_node, True)
 
     def verify_end_condition(self):
         for node in self.reaches:
@@ -328,7 +321,8 @@ class ReachManager:
             for origin in self.automaton.get_nodes():
                 reachable_set = reach.get_reachable_set(origin)
 
-                # this means implies that there are no reaches from this origin node
+                # this means implies that there are no reaches from
+                # this origin node
                 if reachable_set is None:
                     continue
 
@@ -399,7 +393,8 @@ class ReachManager:
                         new_interval.add(addend)
 
                     self.reaches[q].update_reach(p, new_interval)
-                    self.reaches[q].rescale_reach(p, self.lower_bound, self.upper_bound)
+                    self.reaches[q].rescale_reach(p, self.lower_bound,
+                                                  self.upper_bound)
                     self.reaches[q].ensure_reach_in_node_bounds(p)
                     self.reaches[q].remove_inconsistencies()
 

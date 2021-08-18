@@ -1,6 +1,7 @@
 import unittest
+import os
 
-from z3 import *
+from z3 import sat, unsat
 
 from Automaton.DotReader import DotReader
 
@@ -34,7 +35,8 @@ class TestPartiallySatisfiable(unittest.TestCase):
         self.eq_solver.add_initial_condition()
         self.eq_solver.add_sequential_condition()
 
-    def verify_interval_matches(self, interval, index, b_ex, t_ex, il_ex, ih_ex):
+    def verify_interval_matches(self, interval,
+                                index, b_ex, t_ex, il_ex, ih_ex):
         interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * interval
         start_index = interval_offset + index * 4
 

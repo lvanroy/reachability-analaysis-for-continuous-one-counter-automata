@@ -1,6 +1,6 @@
 import unittest
 
-from z3 import *
+from z3 import IntVector, sat
 
 from Automaton.Automaton import Automaton
 
@@ -116,4 +116,3 @@ class TestUnion(unittest.TestCase):
                                  self.result)
 
         self.verify_result(0, 6, 0, 1)
-

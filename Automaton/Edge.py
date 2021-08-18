@@ -31,6 +31,6 @@ class Edge:
 
     def __str__(self):
         if self.operation is not None:
-            return "{} -> {} -> {}".format(self.start, self.operation, self.end)
+            return "{}->{}->{}".format(self.start, self.operation, self.end)
         else:
-            return "{} -> {}".format(self.start, self.end)
+            return "{}->{}".format(self.start, self.end)
