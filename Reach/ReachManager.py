@@ -1,5 +1,6 @@
 from typing import Dict
 from copy import deepcopy
+from math import isnan
 
 from Reach.Reach import Reach
 from Reach.Intervals import Intervals
@@ -284,8 +285,8 @@ class ReachManager:
                         cur_min_v = reach_set.get_inf()
                     else:
                         cur_min_v = reach_set.get_inf() + 0.1
-                    cur_lower_dif = cur_min_v - cur_lower_bound
-                    if low_bound_dif is None or cur_lower_dif < low_bound_dif:
+                    cur_lower_dif = cur_lower_bound - cur_min_v
+                    if low_bound_dif is None or cur_lower_dif > low_bound_dif:
                         low_bound_dif = cur_lower_dif
                         low_bound = cur_lower_bound
                         low_bounded_node = current_node
@@ -298,7 +299,7 @@ class ReachManager:
             # accelerate the upper bound
             if self.is_ready_for_up_acceleration(nodes):
                 reach = self.reaches[top_bounded_node]
-                if top_bound_dif == float('inf'):
+                if top_bound_dif == float('inf') or isnan(top_bound_dif):
                     reach.update_sup(top_prec_node, float('inf'))
                     reach.update_higher_bound_inclusive(top_prec_node, False)
                 else:
@@ -308,7 +309,7 @@ class ReachManager:
             # accelerate the lower bound
             if self.is_ready_for_down_acceleration(nodes):
                 reach = self.reaches[low_bounded_node]
-                if low_bound_dif == -float('inf'):
+                if low_bound_dif == -float('inf') or isnan(low_bound_dif):
                     reach.update_inf(low_prec_node, -float('inf'))
                     reach.update_lower_bound_inclusive(low_prec_node, False)
                 else:

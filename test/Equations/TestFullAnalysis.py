@@ -35,17 +35,11 @@ class TestFullAnalysis(unittest.TestCase):
         self.eq_solver.nr_of_intervals = nr_of_intervals
 
         self.eq_solver.build_transitions()
-        print("transitions")
         self.eq_solver.build_node_conditions()
-        print("node conditions")
         self.eq_solver.build_intervals()
-        print("intervals")
         self.eq_solver.analyse_loops()
-        print("analyse loops")
         self.eq_solver.add_successor_condition()
-        print("successor condition")
         self.eq_solver.add_reachability_condition()
-        print("reachability condition")
 
     def verify_not_empty(self, node):
         m = self.solver.model()
@@ -85,18 +79,18 @@ class TestFullAnalysis(unittest.TestCase):
         self.solver.push()
         self.eq_solver.add_final_condition(nodes.index('s1'))
         self.assertEqual(self.solver.check(), sat)
-        self.verify_not_empty(0)
+        self.verify_not_empty(nodes.index('s1'))
         self.solver.pop()
 
         self.solver.push()
         self.eq_solver.add_final_condition(nodes.index('s2'))
         self.assertEqual(self.solver.check(), sat)
-        self.verify_not_empty(1)
+        self.verify_not_empty(nodes.index('s2'))
         self.solver.pop()
 
         self.eq_solver.add_final_condition(nodes.index('s3'))
         self.assertEqual(self.solver.check(), sat)
-        self.verify_not_empty(2)
+        self.verify_not_empty(nodes.index('s3'))
 
     def test_single_path_with_condition(self):
         self.create_solver("input/single_path_with_conditions.dot")

@@ -104,11 +104,11 @@ class DotReader:
                         # expression
                         expr = None
                         is_condition = False
-                        label = label.replace(" ", "")
-                        if self.operation_matcher.match(label):
-                            expr = self.convert_label_to_expression(label)[0]
-                        if self.condition_matcher.match(label):
-                            expr = self.convert_label_to_expression(label)[0]
+                        label2 = label.replace(" ", "")
+                        if self.operation_matcher.match(label2):
+                            expr = self.convert_label_to_expression(label2)[0]
+                        if self.condition_matcher.match(label2):
+                            expr = self.convert_label_to_expression(label2)[0]
                             is_condition = True
 
                         if edge:

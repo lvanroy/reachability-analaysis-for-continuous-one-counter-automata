@@ -101,7 +101,7 @@ class TestFullScenarioWithoutParamters(unittest.TestCase):
         self.assertTrue(self.manager.is_reachable("s2"))
 
     def test_downwards_acceleration(self):
-        self.initialise_automaton("input/downwards _acceleration_example.dot")
+        self.initialise_automaton("input/downwards_acceleration_example.dot")
 
         while not self.manager.is_finished():
             self.manager.update_automaton()

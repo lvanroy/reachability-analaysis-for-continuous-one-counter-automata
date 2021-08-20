@@ -29,51 +29,65 @@ class TestPartiallySatisfiable(unittest.TestCase):
 
         self.solver = self.eq_solver.s
 
-    def analyze(self):
+    def analyze(self, nr_of_intervals):
+        self.nr_of_intervals = nr_of_intervals
+
+        self.eq_solver.nr_of_intervals = nr_of_intervals
+
         self.eq_solver.build_transitions()
+        self.eq_solver.build_node_conditions()
         self.eq_solver.build_intervals()
-        self.eq_solver.add_initial_condition()
-        self.eq_solver.add_sequential_condition()
+        self.eq_solver.analyse_loops()
+        self.eq_solver.add_successor_condition()
+        self.eq_solver.add_reachability_condition()
 
-    def verify_interval_matches(self, interval,
-                                index, b_ex, t_ex, il_ex, ih_ex):
-        interval_offset = (len(self.eq_solver.nodes) + 1) * 4 * interval
-        start_index = interval_offset + index * 4
+    def verify_not_empty(self, node):
+        m = self.solver.model()
 
-        intervals = self.eq_solver.intervals
-        model = self.solver.model()
+        base_index = node * self.nr_of_intervals * 4
+        base_edge = node * self.nr_of_intervals
 
-        b_acc = intervals[start_index]
-        t_acc = intervals[start_index + 1]
-        il_acc = intervals[start_index + 2]
-        ih_acc = intervals[start_index + 3]
+        def empty(w, x, y, z):
+            return y == 0 and z == 0 and w == x
 
-        self.assertEqual(model[b_acc].as_long(), b_ex)
-        self.assertEqual(model[t_acc].as_long(), t_ex)
-        self.assertEqual(model[il_acc].as_long(), il_ex)
-        self.assertEqual(model[ih_acc].as_long(), ih_ex)
+        success = False
+
+        for i in range(self.nr_of_intervals):
+            int_index = base_index + i * 4
+            edge_index = base_edge + i
+            interval = self.eq_solver.intervals[int_index: int_index+4]
+            b = m[interval[0]]
+            t = m[interval[1]]
+            i_b = m[interval[2]]
+            i_t = m[interval[3]]
+            edge = m[self.eq_solver.used_edges[edge_index]].as_long()
+
+            if not empty(b, t, i_b, i_t):
+                if edge != -2:
+                    success = True
+                    break
+
+        self.assertTrue(success)
 
     def testParitallySatisfiable(self):
         self.create_solver("input/partially_satisfiable.dot")
 
-        self.analyze()
+        self.analyze(1)
+
+        nodes = self.eq_solver.nodes
 
         self.solver.push()
-        self.eq_solver.add_final_condition("s1")
+        self.eq_solver.add_final_condition(nodes.index("s1"))
         self.assertEqual(self.solver.check(), sat)
-        self.assertEqual(self.solver.model()[self.eq_solver.m].as_long(), 0)
-        self.verify_interval_matches(0, 0, 0, 0, 1, 1)
-        self.verify_interval_matches(0, 1, 0, 0, 0, 0)
-        self.verify_interval_matches(1, 0, 0, 0, 1, 1)
-        self.verify_interval_matches(1, 1, 1, 1, 1, 1)
+        self.verify_not_empty(nodes.index("s1"))
         self.solver.pop()
 
         self.solver.push()
-        self.eq_solver.add_final_condition("s2")
+        self.eq_solver.add_final_condition(nodes.index("s2"))
         self.assertEqual(self.solver.check(), unsat)
         self.solver.pop()
 
         self.solver.push()
-        self.eq_solver.add_final_condition("s3")
+        self.eq_solver.add_final_condition(nodes.index("s3"))
         self.assertEqual(self.solver.check(), unsat)
         self.solver.pop()
