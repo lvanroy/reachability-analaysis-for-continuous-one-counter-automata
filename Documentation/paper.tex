@@ -1,4 +1,4 @@
-\documentclass[12pt]{article}
+\documentclass[12pt]{thesis}
 
 \usepackage[backend=bibtex]{biblatex}
 \addbibresource{bibliography}
@@ -117,7 +117,7 @@ Finally, we will apply the combination of approaches on an existing project call
 \addcontentsline{toc}{section}{\listfigurename}
 \listoffigures
 
-\cleardoublepage <*-+/
+\cleardoublepage
 
 \phantomsection
 \addcontentsline{toc}{section}{\listtablename}
@@ -133,7 +133,7 @@ Finally, we will apply the combination of approaches on an existing project call
 
 \phantomsection
 \addcontentsline{toc}{section}{Nederlandstalige samenvatting}
-\section*{Nederlandstalige samenvatting}
+\chapter*{Nederlandstalige samenvatting}
 Een gekend probleem bij het schrijven van code is het vinden van lijnen code die niet bereikbaar zijn \cite{713323, 10.1145/1292316.1292319}. Onbereikbare code kan veel oorzaken hebben maar één van de moeilijker te analyseren situaties zijn condities die nooit voldaan worden. In deze gevallen is de code omringd door de conditie niet bereikbaar en zou deze dus eigenlijk weg moeten. 
 
 Niet bereikbare code is een probleem en kan zelfs kritiek worden in energie gelimiteerde omgevingen zoals ingebedde systemen \cite{embeddedefficiency}. In deze situaties is het vitaal dat onze code zo efficiënt mogelijk is en dus is er absolute nood aan een methode die niet bereikbare code kan detecteren.
@@ -159,7 +159,7 @@ De code zal, buiten het feit dat deze maar één conditionele variabel kan hebbe
 
 Niet alleen de functie inhoud maar ook de definitie zal een beperking krijgen, zo accepteren we enkel parameters van het type integer.
 \newpage
-\section{Introduction}
+\chapter{Introduction}
 A well known problem in writing code is determining whether or not every line of code is reachable. It is often impossible to properly determine whether or not a line of code guarded by a conditional statement is going to be reachable in any possible execution of the code \cite{713323, 10.1145/1292316.1292319}. Unreachable code is never desired and is an ever more pressing issue for energy restrained environments such as embedded computer systems \cite{embeddedefficiency}. In these systems, we want our execution to be as efficient as possible, and therefore avoid conditions that can never be satisfied or lines that can never be reached. To remedy this, a proper unreachable code detection approach is needed.
 
 In order to analyse the reachability, we will make use of the fact that code is easily convertible to automata. All statements within the code that are related to counter updates can directly be converted to operations within an automaton. Each line of code can be represented by one or more nodes and a traversal of an automaton can be directly linked to the traversal of the code itself.
@@ -185,7 +185,7 @@ The code can at most contain one counter and for the continuation of this paper 
 
 Other than the described code constraints, functions must have integer parameter types (if any) to be converted into a counter automaton.
 
-\subsection{Research questions}
+\section{Research questions}
 The objective of this research can be summarised in two core research questions:
 
 \begin{description}
@@ -213,7 +213,7 @@ The first reachability analysis approach will be used to analyse the reachabilit
 \textbf{Perform reachability analysis on parametric continuous one counter automata} \\
 A secondary approach for reachability analysis will be given in Section \textit{\ref{sec:reachability parametric} \nameref{sec:reachability parametric}}. This approach will estimate the reachability intervals which were also used for the non-parametric variant. We will define conditions on the intervals and employ a SAT solver to guess a valid reachability interval configuration. The SAT solver will also support parametric automata and this approach will therefore be used as an alternative to the first approach in case the function uses parameters.
 
-\section{Motivation}
+\chapter{Motivation}
 Code efficiency is one of the core aspects on which the quality of code is measured. Inefficient code can incrementally lead to a slower product, even though it only represents a small part of a much larger whole. This is because code reuse is a critical aspect in Object Oriented Programming (OOP) \cite{10.1145/71605.71612}. In OOP we tend to write code by encapsulating it within classes (objects) based on the functionality they provide. This allows us to simply reuse that object whenever we need that specific functionality. As a direct result of this, every time we introduce code inefficiency, this will get replicated whenever we need use of the specific functionality in which the inefficiency was introduced.
 
 Code inefficiency can also indirectly affect other projects. Many languages such as C, C++, Java and Python support the option to introduce libraries. These libraries are other projects which will entirely be introduced within the current project as to prevent the need to add a new implementation for a functionality which has already been implemented elsewhere. The same effect can occur here where an inefficiency within the library will get propagated to the other projects which make use of said library. As a means to speed up development there are even tools such as Hunter \cite{10.1145/2950290.2983934} which are intended to query large code bases to find code which already implements the feature that is needed, thus increasing the likelihood of using existing code.
@@ -247,10 +247,11 @@ In the past research has been done regarding dead code analysis. In 1994 there w
 A different research has been done on the analysis of the data model behind software in an attempt to identify dead code at the declaration level. This was done in 1997 by Yih-Farn R. Chen et al. \cite{10.1145/267896.267924} and was applied on C++ projects. It concluded by showing that it was in fact capable of identifying a significant amount of dead functions and variables. This is however on a different level than the current research will work on. The research in question did analysis on the data model and might have therefore missed a significant amount of dead code that was introduced within the code itself.
 
 As can be concluded from the examples given above, there has been research on dead code analysis. This research is however dated and it did not specifically cover the environment which we will cover within this research. It is furthermore shown that within the majorly used IDE's such as Eclipse and Clion the cases which we will attempt to detect with this new approach are not yet covered. We can conclude that this research brings additional value to what is known about dead code analysis and can further enhance the optimization of software.
-\section{Preliminaries}
+
+\chapter{Preliminaries}
 This paper will make use of counter automata and more specifically continuous one counter automata. These automata are derived from the general definition of automata and signify an extension by adding the notion of counters.
 
-\subsection{General automata}
+\section{General automata}
 The automata used in this research are a specific subset of the generally defined automata. The general definition for an automaton A is given by the tuple (Q, $\Sigma$, $\delta$, $q_0$, F) where
 \begin{itemize}
 	\item Q is the set of states
@@ -260,7 +261,7 @@ The automata used in this research are a specific subset of the generally define
 	\item $F \subseteq Q$ is a set of states of Q defining the final states, 
 \end{itemize}
 
-\subsection{Continuous one-counter automata}
+\section{Continuous one-counter automata}
 A continuous one-counter automaton (COCA) is defined as a tuple $\mathcal{A}$ = $(Q, q_0, T, \tau)$ where
 \begin{itemize}
 	\item $Q$ is a finite set of states
@@ -286,7 +287,7 @@ op = \{+c, -c, +p, -p: c \in \mathbb{N}, p \in P\} \cup \{\epsilon\}
 
 The final state is omitted from this definition as we are not interested in this. In general the reachability of every line of code will be under scope and not just a single one. Furthermore, making the assumption that the final state is the only state of which we want to analyse reachability creates a significant reduction in the use cases of this approach, and was therefore discarded.
 
-\subsection{COCA reachability}
+\section{COCA reachability}
 In this section we give an overview of how we approach the concept of reachability. The provided concept was proven by Michael Blondin et al. \cite{blondin2021continuous} and will be the basis for the remainder of the approach.
 
 Throughout the evaluation we will be tracking the reachability interval(s) of all nodes denoted by $reach(q)$. $Reach(q)$ will represent the set of possible counter values c that can exist in a configuration $(q, c)$.
@@ -310,7 +311,7 @@ In this paper we will give two different approaches that will approximate the $r
 	\item $reach(q_i) \neq \emptyset \rightarrow \exists \rho = (q_0, v_0) ... (q_i, v_i)$
 \end{itemize}
 
-\section{Analysis of dead code in C}
+\chapter{Analysis of dead code in C}
 The approach given within this paper consists out of two major phases. The first phase will consist of the conversion from C code to one counter automata. The second phase will use the result from the first phase, and perform a reachability analysis on these generated automata. The first phase was already covered in preceding research and the majority of the notes on the approach in the first phase were taken from that research. They were copied here as this research will conclude the unfinished work that was done there, as well as make continuous references to the flaws which arose from it.
 
 \begin{figure}[b]
@@ -350,7 +351,7 @@ op = \{+c, -c, +p, -p, \leq c, =c, \geq c, \leq p, =p, \geq p: c \in \mathbb{N},
 
 The generation of the automaton within the fifth step is done by traversing the tree and converting every statement that is directly relevant to the counter modifications to their corresponding automaton labels.
 
-\subsection{Preprocessing}
+\section{Preprocessing}
 \label{sec:conversion}
 The program will start by resolving all the compiler macros that are part of C. These are intended to be resolved by the compiler at compile time, and are often dependent on which compiler was chosen/the environment on which the code is executed. For our use case I decided to select the global variables in such a way that these represent a windows machine that is using 64 bits. This is however not at all restricted to that and could further be expanded to support any environment and any combination of global variables possible. This selection is in essence not relevant as it should not affect the presence of dead code.
 
@@ -360,10 +361,10 @@ The if/elif/else macros were simply resolved by converting them to boolean expre
 
 Finally, the define and undefine macros were resolved by simply tracking the values they defined and/or undefined throughout the evaluation of the code. 
 
-\subsection{Initialization}
+\section{Initialization}
 Using the flattened result of the preprocessor, the next step will start by running the generator ANTLR compilation unit on the given C code. In case there are any issues regarding simple compilation rules, the program will exit with an error, indicating the issues in the code. For the remainder of the execution, the code is assumed to be correct, and there will be no regard for potential issues within the code itself.
 
-\subsection{Context-free abstract syntax tree generation}
+\section{Context-free abstract syntax tree generation}
 Using the parse tree resulting from the ANTLR compilation, we will try to generate an abstract syntax tree that is as simple as possible without regarding any context. 
 
 First of all, the code uses the notion of a node stack. This node stack will be used to store the nodes that are currently being evaluated.
@@ -371,7 +372,7 @@ First of all, the code uses the notion of a node stack. This node stack will be 
 The first loop will operate as a visitor, which will traverse the parse tree in a depth first manner. The first discovery of a node is done by calling the enter function corresponding to the type of node. As soon as all children of said node have been evaluated, the corresponding exit function will be called. 
 
 However, the creation of nodes is not the same in all situations, in some cases, a specific kind of node will be created and in other cases it will not, depending on the rule used for the current node (which we can determine from the context of the current node). In order to know whether or not we need to pop a node from the node stack, we will allow the code to look at the top node in the stack, and evaluate the type of set node. No other context related evaluations will be allowed.\\
-\\
+\newpage
 \noindent
 \textbf{Context-free analysis assignmentExpression example}\\
 To look at a concrete example, consider the following rule in the grammar:
@@ -385,7 +386,7 @@ The rule for conditionalExpression needs to be there, as there is a chain of exp
 
 Since there is a chance no new node was added within the enter function, we will also be required to evaluate the top of the stack, to see whether or not the top of the stack is a node we need to pop, the code will do the same check that was done in the enter function of the traversal.
 
-\subsection{Context-sensitive abstract syntax tree reduction}
+\section{Context-sensitive abstract syntax tree reduction}
 There is still the need for reductions. We will attempt to implement constant propagation and substitution, in which we compute constant expressions, and replace variables with known value, by their actual value. Furthermore we will try to rephrase expressions by expressions with the same meaning, so that all expressions, if possible, are in an acceptable format for the counter automaton.
 
 The context-sensitive reduction will also keep track of a lot of data about the variables in a symbol table. It will track whether or not variables are current initialized with a known value, values at certain points within the execution, it will track struct, union and enum definitions used for folding and so on. It will keep track of the kind of variables we have (eg. counters and parameters). All of this info will be used to enable the operations this cycle will perform, but will also be used in the validation loop.
@@ -468,7 +469,7 @@ However, the context-sensitive reduction will be able to reduce the earlier spec
 	\label{fig:folded_addition}
 \end{figure}
 
-\subsection{Abstract syntax tree validation}
+\section{Abstract syntax tree validation}
 The fourth loop will iterate over the abstract syntax tree resulting from the previous step, and while doing so, it will evaluate the nodes that occur and the context in which they occur.
 
 The majority of the node evaluation is represented in a list of unsupported nodes. Most of these nodes are head nodes for certain kinds of expressions which will never be supported.
@@ -498,7 +499,7 @@ Another aspect that will be tested, is the function definition which can only ha
 These conditions will all be tracked separately for each function. Whenever the status list is empty at the end of the evaluation, we assume that no issues occurred, and we say that the function satisfies the requirements, if there are any issues, no counter automaton will be generated, and the errors will be printed to the terminal.
 
 Important to note is that there is no regard for global statements. These are considered to be variable and undetermined. It could be that they can perfectly be used as counters, and that they will never be altered by other functions, but it is impossible to determine this efficiently. Therefore, a counter must be declared within the function scope.\\
-\\
+\newpage
 \noindent
 \textbf{Validation example}\\
 When we go back to the earlier mentioned segment of code, given in Listing \ref{lst:ready to eval}, we obtain the automaton displayed in Figure \ref{fig:divide_cleaned}.
@@ -518,6 +519,16 @@ bool divide(int p, int n){
 }
 \end{lstlisting}
 
+We can immediately see that the function conforms to the required function definition, as the parameters are of type int, which can be seen from the parameters defined underneath the \textit{Parameter Type List} node.
+
+From the cleaner we know which variables are counters, and we can see that the first declaration is a counter, but we will skip the declaration, as we know the value which is stored in the initial value, the initialization will happen before the first operation on the counter occurs. 
+
+Next, we encounter the \textit{Iteration statement}, for which we will check the condition with the constrained conditional variable enabled. With this variable enabled, we can simply continue traversing the nodes, and in case there are any unsupported nodes, the corresponding error would automatically be generated. However, there will be no corresponding nodes, so we will leave the \textit{Relational Expression} without any error statuses, and we will disable the constrained conditional variable. 
+
+Next we will enter the \textit{Compound Statement}, which symbolizes the inner scope of the iteration statement. We will encounter an \textit{Assignment Expression} with a variable that we know is a counter, we will therefore enable the counter assignment variable, while traversing the children of this node. No invalid nodes will appear, and we will disable the counter assignment variable when leaving the \textit{Assignment Expression} node. 
+
+The selection statement will be evaluated in the exact same manner as the Iteration Statement was evaluated, and as the jump statement holds no 
+
 \begin{landscape}
 	\vspace*{\fill}
 	\begin{figure}[h]
@@ -529,17 +540,10 @@ bool divide(int p, int n){
 	\vspace*{\fill}
 \end{landscape}
 
-We can immediately see that the function conforms to the required function definition, as the parameters are of type int, which can be seen from the parameters defined underneath the \textit{Parameter Type List} node.
+\noindent
+special operations, we can conclude that this function satisfies the requirements for continuous one counter automaton generation.
 
-From the cleaner we know which variables are counters, and we can see that the first declaration is a counter, but we will skip the declaration, as we know the value which is stored in the initial value, the initialization will happen before the first operation on the counter occurs. 
-
-Next, we encounter the \textit{Iteration statement}, for which we will check the condition with the constrained conditional variable enabled. With this variable enabled, we can simply continue traversing the nodes, and in case there are any unsupported nodes, the corresponding error would automatically be generated. However, there will be no corresponding nodes, so we will leave the \textit{Relational Expression} without any error statuses, and we will disable the constrained conditional variable. 
-
-Next we will enter the \textit{Compound Statement}, which symbolizes the inner scope of the iteration statement. We will encounter an \textit{Assignment Expression} with a variable that we know is a counter, we will therefore enable the counter assignment variable, while traversing the children of this node. No invalid nodes will appear, and we will disable the counter assignment variable when leaving the \textit{Assignment Expression} node. 
-
-The selection statement will be evaluated in the exact same manner as the Iteration Statement was evaluated, and as the jump statement holds no special operations, we can conclude that this function satisfies the requirements for continuous one counter automaton generation.
-
-\subsection{Counter automaton generation}
+\section{Counter automaton generation}
 \label{sec:generation}
 The final step of the conversion will be the counter generation itself. In this loop, there will be no more regards to possible invalid statements. At this point we assume everything to be known, and we can therefore simplify our analysis. Recall that the following list is the collection of allowed labels for the counter automaton.
 \[
@@ -547,10 +551,10 @@ op = \{+c, -c, +p, -p, \leq c, =c, \geq c, \leq p, =p, \geq p: c \in \mathbb{N},
 \]
 This allows us to just check the head nodes related to such expressions.
 
-\subsubsection{Functions}
+\subsection{Functions}
 First of all, we need the notion of the \textit{Function Definition} statements. The generator will generate a counter automaton for each function, and needs to know when these start.
 
-\subsubsection{Assignments}
+\subsection{Assignments}
 Other than functions, we will also need to know when assignments to counters occur, so that we can add the proper transition labels. We only need to check whether or not we are assigning to a counter, if so, we read the operation used, and the variable that gets assigned. Valid counter assignments need to be of the form \textit{c op x} where $c$ is the counter, $op \in $ \textit{\{=, +=, -=\}} and $x \in P \lor x \in \mathbb{N}$. 
 
 As mentioned earlier, assignments are not in the set of operations, but they can be represented using the operators displayed earlier, as can be seen in Figure \ref{fig:counter_assignment}. This can be done by using a reset operation, where we first check whether or not the counter is smaller or equal to the desired value. If so, it is either already satisfied, in which case we can just carry on, or it is smaller than the desired value, for which we will add a self loop with $+1$ as a label, so that we will eventually reach the desired value. 
@@ -565,7 +569,7 @@ The same thing can be done when the counter is larger or equal to the desired va
 
 An important thing to remark, is that we are not interested in general properties of runs for these automata. We are interested in the possibility of reachability or in other words, the existence of one path that will take us to a given node. In the given example, there is a path where we would remain in node 3.98 indefinitely but since there is at least one path that would take us to node 4, node 4 is still considered reachable.
 
-\subsubsection{Inequality conditions}
+\subsection{Inequality conditions}
 \label{sec:inequality}
 Another statement we will need to support, are inequality conditions. If we want our conditional statements to be properly functioning, we will need to be able to generate opposing conditions, but the opposing condition of the equality condition, is the inequality condition, which we can not directly model using the given operations.
 
@@ -596,7 +600,7 @@ The second path follows the \textit{gte} nodes, with the first transition being 
 
 If either of these can be taken, we can state that the counter must be different to the compared value (in this case 10), as these both express a strict inequality. 
 
-\subsubsection{Less than and greater than}
+\subsection{Less than and greater than}
 \label{sec:strict}
 The final addition to the set of supported statements, are the \textit{less than} and \textit{greater than} expressions. These are needed to model the opposing conditions to greater than or equal and less than or equal respectively.
 
@@ -627,7 +631,7 @@ The strict greater than condition, originating from node \textit{start\_if\_1} a
 
 The strict less than condition, originating from node \textit{start\_if\_2} and ending in node \textit{if\_2}, consists of \textit{c += 1} and \textit{c \textless =a} as their first two transitions, which can only be satisfied in case the counter is strictly less than a. The final condition \textit{c -= 1} is there to make sure the counter goes back to its original value.
 
-\subsubsection{Iteration statements}
+\subsection{Iteration statements}
 We will also need the notion of iteration statements, which needs 5 additional special nodes to fully support it's functionality. The first node will be the \textit{start of the loop}. The second node is the \textit{pre node} which symbolizes the state after the precondition of the for loop has been evaluated. Next we need \textit{start of the inner segment} to signify the start of the inner segment. This node will be reached by a transition with the condition as a label. 
 
 After this node the inner segment will follow, and it will be finalized with the \textit{stop inner segment} node, in case this one is needed. This stop node will symbolize the state after the post expression of the for loop has been evaluated, after this node, a transition will occur to the pre node, to re-evaluate the loop condition.
@@ -635,6 +639,7 @@ After this node the inner segment will follow, and it will be finalized with the
 Finally, one more node is needed, and this node will symbolize the \textit{end of the loop}. This node will always be the last node that gets generated, so that any nodes generated beyond this point will start from this point.
 
 Consider the segment of code in Listing \ref{lst:itteration} for which the code conversion will result in the automaton in Figure \ref{fig:test_counter_automaton}.
+
 \begin{lstlisting}[style=CStyle, caption={Example of an itteration statement}, label={lst:itteration}]
 bool test(int c){
 	for(c = 0; c < 5; c ++){
@@ -651,11 +656,11 @@ bool test(int c){
 	\label{fig:test_counter_automaton}
 \end{figure}
 
-\subsubsection{If statements}
+\subsection{If statements}
 \label{sec:if}
 Another important construct are the if statements. These statements will, just as the iteration statements did, require additional nodes to be able to be modelled. If statements require a total of 4 nodes to be modelled.
 
-First of all, we need a $start\ if$ node, from which the conditions will start. The $if$ and $else$ nodes will be used to signify the start of the if and else segment (if present). Independent of the presence of an $else$ node the if configuration will always end in an $end\ if$ node from which point the automaton will carry on to the next line of code.
+First of all, we need a $start\ if$ node, from which the conditions will start. 
 
 \begin{lstlisting}[style=CStyle, caption={Example if statements}, label={lst:if}]
 bool test2(int c){
@@ -669,6 +674,9 @@ bool test2(int c){
 }
 \end{lstlisting}
 
+\noindent
+The $if$ and $else$ nodes will be used to signify the start of the if and else segment (if present). Independent of the presence of an $else$ node the if configuration will always end in an $end\ if$ node from which point the automaton will carry on to the next line of code.
+
 Consider the function in Listing \ref{lst:if}. The program will return a more in depth version of the simplified counter automaton displayed in Figure \ref{fig:test2_counter_automaton}. The first if statement will start from $start\_if\_1$, and end at $end\_if\_1$, the else if will start from $start\_if\_2$, and end at $end\_if\_2$.
 
 \begin{figure}[h]
@@ -678,7 +686,7 @@ Consider the function in Listing \ref{lst:if}. The program will return a more in
 	\label{fig:test2_counter_automaton}
 \end{figure}
 
-\subsubsection{Switch statements}
+\subsection{Switch statements}
 A second conditional statement that exists in C, is a \textit{switch statement}. This statement allows a variable to be compared against multiple values. What is special about the switch statements, is that if matched with one case, the code of all consequential cases will also be executed, until the end of the switch, or until a jump occurs.
 
 Consider the code snippet in Listing \ref{lst:switch}. In this case, a variable \textit{a} will be compared with multiple values, and depending on the matched case, a number of prints will occur.
@@ -710,7 +718,7 @@ There is a second branch from \textit{not\_case\_3} where we can either go to \t
 	\label{fig:counter_switch}
 \end{figure}
 
-\subsubsection{Counter initialization}
+\subsection{Counter initialization}
 The counters do not get initialized at the point that they got declared within the code. This is a simple improvement that helps to reduce the number of counters. Consider the code segment in Listing \ref{lst:two counters}, in which two different counters are used.
 
 \begin{lstlisting}[style=CStyle, caption={Example of a function with two non-overlapping counters}, label={lst:two counters}]
@@ -728,9 +736,8 @@ bool two_counters(){
 \end{lstlisting}
 The first counter will be initialized just before the if statement gets used. The second counter will not be initialized at that point, but will only be initialized just before the second if statement gets used. This means that the program will in fact be able to support the given code segment, even though it has two different counters.
 
-\subsubsection{Final overview}
+\subsection{Final overview}
 To give an in depth overview of how the conversion works, we will transform the following code snippet given in Listing \ref{lst:final overview} into a counter automaton. This code consists of multiple if statements, as well as a loop, it makes use of a single counter value, being \textit{counter}, and two parameters. The loop and the final \textit{if} both use inequality expressions, which are representable in a counter automaton, as was described earlier. The first two \textit{ifs} make use of relational expressions with the less than and greater than operators, which are also representable within a counter automaton. The counter is only  using additions or subtractions with parameters and none of these parameters will ever be modified, which also conforms to the requirements. Finally, this function has only integer parameters which makes us conclude that this entire function is representable in a counter automaton.
-\newpage
 
 \begin{lstlisting}[style=CStyle, caption={Example of a more complex function suitable for conversion}, label={lst:final overview}]
 bool gcm(int a, int b){
@@ -862,10 +869,20 @@ After this, all that remains is the return on line twenty. This return will simp
 
 The complete overview of the counter automaton can be seen in Figure \ref{fig:final_overview_11}. This is a completely correct counter automaton that is suitable for reachability analysis.
 
-\subsection{Automaton specification format}
+\section{Automaton specification format}
 \label{sec:automaton input}
 For the approach described within this paper, the dot language part of Graphviz\cite{10.1007/3-540-45848-4_57} was assumed to be used to represent all automata textually. This language is a very versatile and easily understandable format in which automata can be defined. It was also used as the output language in the preceding research which automatically made it the most interesting format to support. No other formats were considered as the conversion from a textual representation to an instance of the \textit{Automaton} class is not considered to be the core of the research. The logic used for the dot language is furthermore identical to the logic that would need to be applied to read any other automaton specification, with the only difference lying in the language specific aspects of the specification.
 
+\subsection{Edge transformation}
+Edges are represented within the dot language by a single line per edge using the format specified below. The \textit{origin} and \textit{end} tokens specify the start and end node of the transition. The square brackets encapsulate optional arguments, of which the label and xlabel arguments matter most, as either can be used to specify the label of the transition, and thereby the operation that we want to have attached to the edge. 
+
+\begin{gather*}
+	\textless origin \textgreater \rightarrow \textless end\textgreater [label=\textless label\textgreater, xlabel=\textless label\textgreater, ...]
+\end{gather*}
+
+This configuration can easily be converted into edge instances, but the labels can still represent several things. To allow any possible automaton specification, we will simply filter the labels using a regex for operations and labels. If it does not match, we assume the label to be an actual name label, if it does match, the label is perceived as a mathematical formula and it will be registered as such. 
+
+To closely match the specification of the theoretical proof on which this approach is based \cite{blondin2021continuous}, we require edges to only contain operations and not conditions. In case an edge is encountered with a condition as a label, this will be resolved by introducing a new node, \textit{inbetween}, to which this condition will be added. This node will be added as an intermediary step and the condition label will be attached to this node. By ensuring that this node will only have one incoming edge and one outgoing edge we preserve the fact that
 \begin{landscape}
 	\begin{figure}
 		\centering
@@ -875,16 +892,8 @@ For the approach described within this paper, the dot language part of Graphviz\
 	\end{figure}
 \end{landscape}
 
-\subsubsection{Edge transformation}
-Edges are represented within the dot language by a single line per edge using the format specified below. The \textit{origin} and \textit{end} tokens specify the start and end node of the transition. The square brackets encapsulate optional arguments, of which the label and xlabel arguments matter most, as either can be used to specify the label of the transition, and thereby the operation that we want to have attached to the edge. 
-
-\begin{gather*}
-	\textless origin \textgreater \rightarrow \textless end\textgreater [label=\textless label\textgreater, xlabel=\textless label\textgreater, ...]
-\end{gather*}
-
-This configuration can easily be converted into edge instances, but the labels can still represent several things. To allow any possible automaton specification, we will simply filter the labels using a regex for operations and labels. If it does not match, we assume the label to be an actual name label, if it does match, the label is perceived as a mathematical formula and it will be registered as such. 
-
-To closely match the specification of the theoretical proof on which this approach is based \cite{blondin2021continuous}, we require edges to only contain operations and not conditions. In case an edge is encountered with a condition as a label, this will be resolved by introducing a new node, \textit{inbetween}, to which this condition will be added. This node will be added as an intermediary step and the condition label will be attached to this node. By ensuring that this node will only have one incoming edge and one outgoing edge we preserve the fact that the condition must hold in case one desires to from from the \textit{origin} node to the \textit{end} node. 
+\noindent
+the condition must hold in case one desires to from from the \textit{origin} node to the \textit{end} node. 
 
 Below in Figure \ref{fig:edgetransformlabel} is an example of an edge which does not correspond to the assumptions made within the original paper as the edge between \textit{q0} and \textit{q1} has a conditional label. This is resolved in the image on the right by introducing \textit{\_0} without losing the original meaning of the edge in the first image.
 
@@ -922,7 +931,7 @@ Below in Figure \ref{fig:edgetransformlabel} is an example of an edge which does
 	\label{fig:edgetransformlabel}
 \end{figure}
 
-\subsubsection{Node transformation}
+\subsection{Node transformation}
 Nodes do not require to be specified using a separate node specification rule, and will simply be generated in case they are used within an edge. Node specifications function specifically for the cases in which additional attributes need to be added to nodes. To support operations as well as general labels, the only two attributes which will be tracked from node specification are the \textit{label} and \textit{xlabel} arguments. These labels will be matched with regexes specifying the supported formats for operations and conditions. In case the label does not match either, it is still tracked as regular node labels are still relevant for reachability reporting. For the approach discussed within this paper the node labels represent the code line from which they were generated and are therefore needed to analyse code line reachability. All node specifications will follow the format given below where the square bracket can contain a number of optional arguments.
 
 \begin{gather*}
@@ -971,21 +980,21 @@ In Figure \ref{fig:nodetransformlabel} below, an example can be seen where node 
 	\label{fig:nodetransformlabel}
 \end{figure}
 
-\subsubsection{Initial node}
+\subsection{Initial node}
 For reachability analysis to be relevant there needs to be an initial node. In automata, the initial node is often represented by a transition going from nowhere towards a single node. This is however not a built in feature within the dot language. One of the solutions to overcome this is to create a node and make it invisible, an edge can then be drawn from this invisible node to the actual initial node. Other approaches are potentially possible but were not explored. Any alternative implementations could easily be introduced instead of the considered format without interchanging any of the other components.
 
 As a consequence of this feature invisible nodes are assumed to exist within the automaton but these are irrelevant to our analysis. Invisible nodes are by definition not relevant for reachability analysis and are therefore not considered as actual nodes.
 
-\subsection{Reachability of non-parametric COCA}
+\section{Reachability of non-parametric COCA}
 \label{sec:reachability non parametric}
 In this section we will give a description of the solution that was used to determine the reachability for non-parametric continuous one counter automata. This will be done by showing the approach that was taken, as well as an application to show its usage. This approach is a practical implementation of the theoretical approach described by Michael Blondin et al. \cite{blondin2021continuous}.
 
-\subsubsection{Initialization}
+\subsection{Initialization}
 During the initialization phase, we will instantiate all reachability intervals. The initial node will get an initial reachability interval $[i, i]$ where $i$ represents the initial counter value. This is not a fixed value, but will for the sake of this research always default to 0, simply because all integer values in most programming languages default to 0 at initialization.
 
 All other nodes will get an empty interval assigned to them as to signify that they are initially not reachable.
 
-\subsubsection{Interval updates}
+\subsection{Interval updates}
 \label{interval updates}
 From the initial state, we will start doing cycles in which we update all intervals once, wherever possible. This will be done using the successor function \textit{succ} below where $R_i: Q \times Q \rightarrow 2^\mathbb{Q}$ represent the mapping function for the i-th iteration. This function is going from each transition to its corresponding counter reachability interval. The \textit{succ} function will update the interval of one transition, \textit{(p, z, q)}, to its next iteration, based upon the current configuration.
 
@@ -1047,7 +1056,7 @@ Next, for the third successor, one would say that we can update both the transit
 
 As can be seen in Table \ref{table:table_example_succ} a few more successors were computed and we can clearly notice that we will eventually reach an interval which will exceed the lower bound of 100 which is placed upon $q_3$. Given that the interval of $q_2$ goes up by two every other iteration it will take up to cycle 100 before the transition becomes active. Considering that this is only a small example, this is far from desired. Furthermore, given a loop that is not bounded, it is possible that a loop has no fix point at all, which means that our algorithm will evaluate indefinitely. A solution for this is loop acceleration in which we will accelerate our loop based upon the behaviour said loop shows. 
 
-\subsubsection{Loop acceleration}
+\subsection{Loop acceleration}
 \label{sec:accel}
 Unfortunately, the \textit{succ} function is not guaranteed to find the bounds in a finite number of evaluations. For example, the scenario given in Figure 23 would never converge at all. The interval of the loop between $q_1$ and $q_2$ will keep expanding indefinitely and the evaluation will therefore never stop.
 
@@ -1144,7 +1153,7 @@ Applying our previously described steps, we will find that node $q_2$ is closest
 
 If we do one additional iteration, we can see that we have now discovered an interval for the transition going from $q_2$ to $q_3$. We have furthermore achieved a fix point, as both $q_2$ and $q_3$ have met their bounds.
 
-\subsubsection{Proof of termination}
+\subsection{Proof of termination}
 The mathematical proof of termination has already been given by Michal Blondin et al. \cite{blondin2021continuous} but an intuitive proof for the algorithm will also be given here. Given that there are no loops it will trivially terminate within n evaluations, given that n is equal to the total number of nodes within the automaton. If there are loops they must either be positively expanding, negatively expanding, expanding in both directions or not expanding at all. 
 
 \begin{figure}[b!]%
@@ -1176,13 +1185,13 @@ In the last case the evaluation will trivially terminate as the loops will end i
 
 It is possible that further evaluations require bounds to be recomputed. For example, given the automaton described in Figure \ref{fig:example_recomputation_of_bounds}. In this automaton the loop between $q_0$ and $q_1$ will be expanded first. The evaluation of the second loop continues and the lower bound of $q_0$ to $q_1$ will keep on decreasing, until it eventually gets accelerated, at which moment we achieve a fix point and the evaluation stops. This will always be the case given that we can never have an infinite amount of nodes which will thus result in a finite amount of loops which all accelerate at some point. The effects of said acceleration might need a few more iterations to propagate their effect all across the automaton but once it does the evaluation will end. We can therefore conclude that the algorithm can never run indefinitely.
 
-\subsection{Reachability of parametric COCA}
+\section{Reachability of parametric COCA}
 \label{sec:reachability parametric}
 Throughout this section we will give an overview of how the reachability for parametric continuous one counter automata can be analysed. This will be done using the approach that was theoretically described by Michael Blondin et al. \cite{blondin2021continuous}. This paper will both give a practical approach as well as an application, intended as prove that it works in practise.
 
 In this approach we will attempt to encode the fix-point of the \textit{succ} function defined in the previous section using first order logic which can then be implemented and solved by a SAT solver.
 
-\subsubsection{Transition initialization}
+\subsection{Transition initialization}
 
 During initialization we will start by converting all transitions that are defined within the given automaton to their equivalent equations. All transitions are represented by three variables. Two variables are used to represent the start and end point of the transition and the third will represent the operation associated with the transition. The operation will simply be an integer value as we limited our automata to only allow + and - operations. This means that an integer can fully cover every possible operation that can be performed on an edge. 
 
@@ -1206,7 +1215,7 @@ Note that there is no need to cover conditions on edges as we resolved all incon
 	\label{fig:example transition conversion}
 \end{figure}
 
-\subsubsection{Node condition initialization}
+\subsection{Node condition initialization}
 
 Alongside the transitions we will also initialise the conditions of the nodes in which the transitions end. These are important as these decide whether or not a transition can be taken. Given that we have a transition with an operation equal to $+1$, a current counter value equal to just $0$ and an end node with a condition equal to $\le -1$. This example is visualised in Figure \ref{fig:example node condition conversion} and we can see that $q_1$ will not be reachable, given that the initial counter value is equal to 0. Each condition will be represented by two variables, one to indicate the condition type and a second to indicate the value against which it is compared. Just as for the transitions our condition value can either be constant or a variable. The condition type can have three different values, $0$ will be used to represent the $\ge$ operation, $1$ will be used to represent $\le$, 2 will represent $=$ and finally $3$ will be used in case there is no condition associated with the end node.
 
@@ -1228,7 +1237,7 @@ Alongside the transitions we will also initialise the conditions of the nodes in
 	\label{fig:example node condition conversion}
 \end{figure}
 
-\subsubsection{Interval encoding}
+\subsection{Interval encoding}
 
 Each of the nodes will get reachability intervals assigned to it. These reachability intervals will represent a possible subset of counter values that can be reached in a given node. Using these intervals we can then decide whether or not a next transition can be taken. These intervals will also be used to derive whether or not a node is reachable.
 
@@ -1238,7 +1247,7 @@ Each interval will be represented by 4 variables. The first two variables will r
 
 Initially the start node of the automaton will have an interval equal to exactly the starting value of the counter (by default this will be 0). All other intervals of all nodes will get values according to the edges that exist within the automaton. The evolution of these intervals will be discussed in the next sections.
 
-\subsubsection{Define the end goal}
+\subsection{Define the end goal}
 One by one we will verify for each node whether or not it is reachable, this can be done using the condition below, where e represents the edge taken to generate any of the intervals part of the goal node. In case e is equal to -2 it signifies that no transition was taken and that the interval is empty. If e is not equal to -2 it must imply that the according interval is not empty as will be explained later.
 
 \begin{gather*}
@@ -1246,7 +1255,7 @@ One by one we will verify for each node whether or not it is reachable, this can
 	reachable = Or(reachable_i \text{ for all i $\in$ I})
 \end{gather*}
 
-\subsubsection{msum}
+\subsection{msum}
 The msum function is used to determine the inclusiveness of the bounds in the interval addition. The msum function is defined as:
 
 \begin{gather*}
@@ -1254,7 +1263,7 @@ msum(i, j) = 2 \qquad \qquad if \; max(i,j) = 2 \\
 msum(i, j) = min(i, j) \quad \qquad \quad otherwise \qquad \qquad \qquad
 \end{gather*}
 
-\subsubsection{Emptiness of intervals}
+\subsection{Emptiness of intervals}
 We need to be able to verify whether or not an interval is empty in order to create base cases for future operations. An interval is considered to be empty if both bounds are not inclusive and the boundary values are equal to each other as can be seen in the formulae below. 
 
 \begin{gather*}
@@ -1263,7 +1272,7 @@ We need to be able to verify whether or not an interval is empty in order to cre
 	x_0 = x_1
 \end{gather*}
 
-\subsubsection{Interval addition}
+\subsection{Interval addition}
 The addition of intervals will be split in three different cases as can be seen in the graph below. In case either operand is an empty interval the resulting interval will trivially equal the other interval. In case they are both not empty we compute the sum by taking the addition of the lower and upper bound of the X and Y intervals and the msum to compute whether or not the resulting bounds are inclusive. An overview of this can be found in Figure \ref{fig:addition}.
 
 \begin{figure}[h]
@@ -1290,15 +1299,15 @@ The addition of intervals will be split in three different cases as can be seen 
 		\draw [arrow] (q0) |- (q2);
 		\draw [arrow] (q0) |- (q3);
 		
-		\draw [arrow] (q1) |- (q4);
-		\draw [arrow] (q2) |- (q5);
+		\draw [arrow] (q1) -> (q4);
+		\draw [arrow] (q2) -> (q5);
 		\draw [arrow] (q3) |- (q6);
 	\end{tikzpicture}
 	\caption{Overview of the interval addition operation}
 	\label{fig:addition}
 \end{figure}
 
-\subsubsection{Interval overlap}
+\subsection{Interval overlap}
 \begin{figure}[b!]
 	\centering
 	\begin{tikzpicture}[auto, >=latex, font=\footnotesize\scshape]
@@ -1324,7 +1333,7 @@ The addition of intervals will be split in three different cases as can be seen 
 
 One important relationship between two intervals is overlap as it directly helps to simplify the generation of unions and intersections of intervals. This can be computed by verifying whether or not any of the endpoints of one interval is within the other interval. Note that it is important to specifically look at the third and fourth variable part of the interval to also consider infinite bounds. An overview of this operation can be seen in Figure \ref{fig:overlap}.
 
-\subsubsection{Interval intersection}
+\subsection{Interval intersection}
 The entirety of the intersection operation is visualised in Image \ref{fig:intersection}. In this image all nodes where multiple lines leave are assumed to imply $or$ operations between all end nodes. This holds with the exception of the coloured nodes where nodes of the same colour represent an $or$ operation which will then be combined in a bigger $and$.
 
 For the intersection of intervals we will first of all consider the cases where the result is an empty vector. This can either occur when there is no overlap or when X or Y is empty. In any of these cases we can simply assign an empty vector to Z, being the resulting interval.
@@ -1392,37 +1401,37 @@ For both sides it holds that if either X or Y goes to infinity in that direction
 		\draw [arrow] (q4)  |- (q6);
 		\draw [arrow] (q4)  |- (q7);
 		
-		\draw [arrow] (q1)  |- (q9);
-		\draw [arrow] (q2)  |- (q10);
-		\draw [arrow] (q3)  |- (q11);
-		\draw [arrow] (q4)  |- (q12);
+		\draw [arrow] (q1)  -> (q9);
+		\draw [arrow] (q2)  -> (q10);
+		\draw [arrow] (q3)  -> (q11);
+		\draw [arrow] (q4)  -> (q12);
 		\draw [arrow] (q4)  |- (q13);
-		\draw [arrow] (q6)  |- (q14);
+		\draw [arrow] (q6)  -> (q14);
 		\draw [arrow] (q6)  |- (q15);
 		\draw [arrow] (q6)  |- (q16);
-		\draw [arrow] (q7)  |- (q17);
+		\draw [arrow] (q7)  -> (q17);
 		\draw [arrow] (q7)  |- (q18);
 		\draw [arrow] (q7)  |- (q19);
 		
-		\draw [arrow] (q12) |- (q32);
-		\draw [arrow] (q13) |- (q33);
-		\draw [arrow] (q14) |- (q22);
-		\draw [arrow] (q15) |- (q23);
-		\draw [arrow] (q16) |- (q24);
+		\draw [arrow] (q12) -> (q32);
+		\draw [arrow] (q13) -> (q33);
+		\draw [arrow] (q14) -> (q22);
+		\draw [arrow] (q15) -> (q23);
+		\draw [arrow] (q16) -> (q24);
 		\draw [arrow] (q16) |- (q25);
 		\draw [arrow] (q16) |- (q26);
-		\draw [arrow] (q17) |- (q27);
-		\draw [arrow] (q18) |- (q28);
-		\draw [arrow] (q19) |- (q29);
+		\draw [arrow] (q17) -> (q27);
+		\draw [arrow] (q18) -> (q28);
+		\draw [arrow] (q19) -> (q29);
 		\draw [arrow] (q19) |- (q30);
 		\draw [arrow] (q19) |- (q31);
 		
-		\draw [arrow] (q24) |- (q35);
-		\draw [arrow] (q25) |- (q36);
-		\draw [arrow] (q26) |- (q37);
-		\draw [arrow] (q29) |- (q38);
-		\draw [arrow] (q30) |- (q39);
-		\draw [arrow] (q31) |- (q40);
+		\draw [arrow] (q24) -> (q35);
+		\draw [arrow] (q25) -> (q36);
+		\draw [arrow] (q26) -> (q37);
+		\draw [arrow] (q29) -> (q38);
+		\draw [arrow] (q30) -> (q39);
+		\draw [arrow] (q31) -> (q40);
 		
 	\end{tikzpicture}
 	\caption{Overview of the interval intersection operation}
@@ -1433,7 +1442,7 @@ If neither X or Y goes to infinity we will look at whether or not either bound i
 
 If both bounds are equal then we look if they are both inclusive, if yes then Z will be inclusive too, if either one is not inclusive then Z will also be not inclusive for said bound. The value of Z will be equal to the bound of X and Y in any of these cases.
 
-\subsubsection{Interval union}
+\subsection{Interval union}
 The union operation is summarised in Figure \ref{fig:union} below. We can immediately see that this is very similar to the intersection in the sense that most of the conditional statements are the exact same. 
 
 \begin{figure}
@@ -1490,33 +1499,33 @@ The union operation is summarised in Figure \ref{fig:union} below. We can immedi
 		\draw [arrow] (q4)  |- (q6);
 		\draw [arrow] (q4)  |- (q7);
 		
-		\draw [arrow] (q5)  |- (q9);
-		\draw [arrow] (q2)  |- (q10);
-		\draw [arrow] (q3)  |- (q11);
-		\draw [arrow] (q4)  |- (q12);
+		\draw [arrow] (q5)  -> (q9);
+		\draw [arrow] (q2)  -> (q10);
+		\draw [arrow] (q3)  -> (q11);
+		\draw [arrow] (q4)  -> (q12);
 		\draw [arrow] (q4)  |- (q13);
-		\draw [arrow] (q6)  |- (q14);
+		\draw [arrow] (q6)  -> (q14);
 		\draw [arrow] (q6)  |- (q15);
 		\draw [arrow] (q6)  |- (q16);
-		\draw [arrow] (q7)  |- (q17);
+		\draw [arrow] (q7)  -> (q17);
 		\draw [arrow] (q7)  |- (q18);
 		\draw [arrow] (q7)  |- (q19);
 		
-		\draw [arrow] (q12) |- (q32);
-		\draw [arrow] (q13) |- (q33);
-		\draw [arrow] (q14) |- (q22);
-		\draw [arrow] (q15) |- (q23);
-		\draw [arrow] (q16) |- (q25);
+		\draw [arrow] (q12) -> (q32);
+		\draw [arrow] (q13) -> (q33);
+		\draw [arrow] (q14) -> (q22);
+		\draw [arrow] (q15) -> (q23);
+		\draw [arrow] (q16) -> (q25);
 		\draw [arrow] (q16) |- (q26);
-		\draw [arrow] (q17) |- (q27);
-		\draw [arrow] (q18) |- (q28);
-		\draw [arrow] (q19) |- (q30);
+		\draw [arrow] (q17) -> (q27);
+		\draw [arrow] (q18) -> (q28);
+		\draw [arrow] (q19) -> (q30);
 		\draw [arrow] (q19) |- (q31);
 		
-		\draw [arrow] (q25) |- (q36);
-		\draw [arrow] (q26) |- (q37);
-		\draw [arrow] (q30) |- (q39);
-		\draw [arrow] (q31) |- (q40);
+		\draw [arrow] (q25) -> (q36);
+		\draw [arrow] (q26) -> (q37);
+		\draw [arrow] (q30) -> (q39);
+		\draw [arrow] (q31) -> (q40);
 		
 	\end{tikzpicture}
 	\caption{Overview of the interval union operation}
@@ -1526,7 +1535,7 @@ The union operation is summarised in Figure \ref{fig:union} below. We can immedi
 
 We once again split the evaluation into two near identical evaluations being marked by the blue and red nodes. The red segment relates to the lower bound, the blue segment to the upper bound. In case either side goes to infinity for $X$ or $Y$, $Z$ will trivially go to infinity too. In case it does not go to infinity we will select the one closest to the bounds. Finally if both bounds are equal we will by default set the boundary value equal to the boundary value of $X$ and $Y$ and make it inclusive if either $X$ or $Y$ are inclusive and exclusive otherwise.
 
-\subsubsection{Interval progression}
+\subsection{Interval progression}
 For further intervals to get populated we need conditions to represent the potential traversal of edges. Note that we do not consider an actual path through the automaton, we simply try to guess a configuration. We do not require our solver to give us a unique or optimal solution, we simply require the resulting configuration to represent a subset of all reachable counter values for which the node under test is proven to be reachable.
 
 Each sub interval can either be empty, in case there are no transitions that can be activated, or it holds the result of an update. The schema given in Figure \ref{fig:int progression 1} describes the logic which is applied on the sub intervals. Given that we are currently evaluating sub interval $i$ of node $q$ we can see that it will be empty in case no transitions can fire. If a transition can still fire the interval will be equal to the direct result of an update starting from the sub interval $j$ of a node $p$ given that there is a transition $t$ going from $p$ to $q$. 
@@ -1552,10 +1561,10 @@ Each sub interval can either be empty, in case there are no transitions that can
 		\draw [arrow] (q0) |- (q4);
 		
 		\draw [arrow] (q3) |- (q5);
-		\draw [arrow] (q3) |- (q6);
+		\draw [arrow] (q3) -> (q6);
 		
 		\draw [arrow] (q4) |- (q7);
-		\draw [arrow] (q4) |- (q9);
+		\draw [arrow] (q4) -> (q9);
 	\end{tikzpicture}
 	\caption{Overview of the interval assignment conditions}
 	\label{fig:int progression 1}
@@ -1585,12 +1594,14 @@ Next we will follow the same \textit{succ} function as we followed for the reach
 		\node[center]	at (2.5, -1) 	(q3)	{$I_{q_i}$ is not empty};
 		\node[center]	at (2.5, -2)	(q4)	{$I_{p_j}$ is not empty};
 		\node[center] 	at (2.5, -3)	(q5)	{$Y = I_{p_j} + addend$};
-		\node[center] 	at (2.5, -4)	(q5)	{$Y2 = Y \cap \tau(A)$};
-		\node[center] 	at (2.5, -5)	(q5)	{$I_{q_i} = Y2 \cap \tau(q)$};
+		\node[center] 	at (2.5, -4)	(q6)	{$Y2 = Y \cap \tau(A)$};
+		\node[center] 	at (2.5, -5)	(q7)	{$I_{q_i} = Y2 \cap \tau(q)$};
 		
 		\draw [arrow] (q0) |- (q3);
 		\draw [arrow] (q0) |- (q4);
 		\draw [arrow] (q0) |- (q5);
+		\draw [arrow] (q0) |- (q6);
+		\draw [arrow] (q0) |- (q7);
 	\end{tikzpicture}
 	\caption{Overview of the can update condition}
 	\label{fig:int progression 2}
@@ -1648,7 +1659,7 @@ Finally, the edge between $q_1$ and $q_2$, labelled edge 2, can be taken if ther
 
 After assigning all of these intervals we get the results in Table \ref{table:example loop intervals} where all intervals are given using the format $<edge>: <interval>$. Note that there are many more intervals that are simply left out as they are all empty.
 
-\subsubsection{Loop progression}
+\subsection{Loop progression}
 In case we only use the conditions above we will still have a problem with loops. Considering the example below in Figure \ref{fig:example loop bounded}, node $q_2$ is not reachable as our initial value is equal to 0 and we only have positive operations. However, with the condition given above any interval with an upper bound equal to $\infty$ would work as a fix point. We can therefore perfectly select the interval $(-20, \infty)$ and the conditions would be satisfied. We should therefore add an additional condition that restricts fix points for loops.
 
 \begin{figure}[h]%
@@ -1673,15 +1684,6 @@ In case we only use the conditions above we will still have a problem with loops
 \end{figure}
 
 Considering the definitions of loop expansion given in Section \textit{\ref{sec:accel} \nameref{sec:accel}} we will differentiate between the different types of expanding loops. Consider a loop $l$ with transitions $t_0, t_1, ..., t_k$ which goes over the nodes $q_i, q_i+1, ..., q_j$. We furthermore assume that the interval with index 0 of each of the nodes will be used to represent the loop. Finally, we assume to be working in an automaton which has $n$ intervals per node. An overview of the conditions that need to be enforced in case loops are present can be seen in Figure \ref{fig:loop condition}.
-
-In case the loop under consideration is not taken the condition should trivially evaluate to true. In case it is taken there should be at least one node that has an interval that is not related to the loop (the intervals related to the loop are at index 0 and are therefore not considered in the equation). If it is not expanding in either direction it has to originate in another existing interval and it should therefore be bounded by the values part of any other interval. The $min\_val$ and $max\_val$ variables are computed using the formulae below.
-
-\begin{gather*}
-	\text{min\_val}_q = min(I_{{q_1}_{low}}, I_{{q_2}_{low}}, ..., I_{{q_n}_{low}})\\
-	\text{max\_val}_q = max(I_{{q_1}_{high}}, I_{{q_2}_{high}}, ..., I_{{q_n}_{high}})
-\end{gather*}
-
-In case either the min or max variable go to infinity, the conditions for their respective bounds should trivially be satisfied as the intervals are no longer bounded in that case. The schema representing the loop condition can be found below in Figure \ref{fig:loop condition}.
 
 \begin{figure}[h]
 	\centering
@@ -1722,6 +1724,15 @@ In case either the min or max variable go to infinity, the conditions for their 
 	\label{fig:loop condition}
 \end{figure}
 
+In case the loop under consideration is not taken the condition should trivially evaluate to true. In case it is taken there should be at least one node that has an interval that is not related to the loop (the intervals related to the loop are at index 0 and are therefore not considered in the equation). If it is not expanding in either direction it has to originate in another existing interval and it should therefore be bounded by the values part of any other interval. The $min\_val$ and $max\_val$ variables are computed using the formulae below.
+
+\begin{gather*}
+	\text{min\_val}_q = min(I_{{q_1}_{low}}, I_{{q_2}_{low}}, ..., I_{{q_n}_{low}})\\
+	\text{max\_val}_q = max(I_{{q_1}_{high}}, I_{{q_2}_{high}}, ..., I_{{q_n}_{high}})
+\end{gather*}
+
+In case either the min or max variable go to infinity, the conditions for their respective bounds should trivially be satisfied as the intervals are no longer bounded in that case. The schema representing the loop condition can be found below in Figure \ref{fig:loop condition}.
+
 When we now reinvestigate the example in Figure \ref{fig:example loop bounded} we can get the intervals given in Table \ref{table:example loop bounded intervals}. Note our edges are numerically labelled here. The label 0 represents the edge from $q_0$ to $q_1$, label 1 represents the loop and label 2 represents the edge from $q_1$ to $q_2$. Instead of going negative the node $q_1$ will now go from 0 to infinity and node $q_2$ will thus not be discovered as being reachable which is as expected. The second interval of $q_1$ can never go negative as it would then fail to satisfy the loop conditions given above.
 
 \begin{table*}[t]
@@ -1739,7 +1750,7 @@ When we now reinvestigate the example in Figure \ref{fig:example loop bounded} w
 	\label{table:example loop bounded intervals}
 \end{table*}
 
-\section{Use case: xrdp}
+\chapter{Use case: xrdp}
 Xrdp\footnote{\url{https://github.com/neutrinolabs/xrdp}} is a medium sized c project that provides a graphical login to remote machines using Microsoft Remote Desktop. It was chosen as a use case for this project as it is a real life example of a project that would greatly benefit from dead code elimination. It consists of 120 files containing 94 458 lines of code and there are a total of 1 328 functions (not including defines). It is interesting for dead code analysis as it is highly dependant on efficiency. It is furthermore used in several other projects as this project is forked into 947 repositories thus indicating that this project counts as a core reused in other projects. Inefficiencies in this project would be further extrapolated in the projects who inherit from it and should therefore be prevented at all costs.
 
 \begin{table}[h]
@@ -1757,7 +1768,7 @@ Xrdp\footnote{\url{https://github.com/neutrinolabs/xrdp}} is a medium sized c pr
 \end{table}
 
 
-\subsection{shortcomings}
+\section{shortcomings}
 The code analysis quickly showed flaws in the compiler resulting from the first phase in the analysis.
 
 A first major case that was found rather quickly were cases in which a function is used in conditional statements, rather than variables. This situation was not fully taken into account and will lead to false results. For example, there is an instance where a function is simply used as boolean within if statements. In these statements the validator should have returned that this case is not analysable, as we can not investigate whether or not the invoked function can return a certain value but instead the code will simply not acknowledge the function as a counter as it is programmed to only handle values. In the example in Listing \ref{lst:functional condition} we can see a case where a function is used on line 11 and 14 yet the one counter automaton will be generated but simply without any counter. For this analysis such results were manually removed to avoid analysing trivial cases with our new reachability approach.
@@ -1843,7 +1854,7 @@ Finally there were other cases where node mappings occurred that were not expect
 
 In the initial compiler the first format was assumed and thus several errors occurred due to missing nodes during the evaluation of the project. This is very hard to consider beforehand and cases like this make it near impossible to properly identify every possible case that can ever occur. A significant amount of errors of this kind were resolved, such as this one, but not all.
 
-\subsection{Results}
+\section{Results}
 As a result of these issues several files were not analysable. An attempt was made to resolve as many issues as possible such as the lack of proper preprocessing. Some of the optimizations were also disabled, such as optimizations for variable types which can not be handled by the compiler but this eventually resulted in other components breaking. This leads to 76 files of the 120 total files being evaluated correctly. Within these files a total of 975 functions were evaluated of which 35 were found to be suitable for counter evaluation. Two of these functions had a function in their conditional statement and should not have been accepted for counter automaton analysis. All other cases were correctly identified and were all ready for further analysis.
 
 \begin{table}[h]
@@ -1883,12 +1894,12 @@ It should be noted that a proper time analysis is hard considering the fact that
 	\label{table:manual}
 \end{table}
 
-\section{Manual validation}
+\chapter{Manual validation}
 To further identify the correctness tests were performed doing end to end verifications of the tool. We were able to verify that our approach was in fact able to analyse C code including the reachability analysis. We were however unable to prove that it will show lines as unreachable in case there is dead code. To verify this a manual end to end test suite was created which verified mutations of the xrdp project. These mutations specifically introduced different kinds of dead code in an attempt to identify whether or not the approach is indeed able to identify dead code.
 
 A few cases were considered which were both applied to parametric and non-parametric automata as can be seen in Table \ref{table:manual}. For all of the considered cases both approaches were able to correctly identify the lines that were potentially unreachable. More edge case testing was done with test suites which were written to help with the development of the approach. These will specifically test the edge cases for each of the operations given for both the parametric and non-parametric approach. All of these tests passed.
 
-\section{Research questions}
+\chapter{Research questions}
 The goals of this research are summarised in two research questions which were listed at the beginning of this paper. In this section we will conclude our findings in the form of a reply to the two initial questions.\\
 \\
 \noindent
@@ -1909,14 +1920,14 @@ We were able to prove that if convertible to COCA, our approach is capable of pe
 
 To fully conclude that this is a viable approach additional research will need to be performed on alternatives for the compiler that was used. Given that an alternative can be found that is capable of converting C code in a finite amount of time, this combined approach would be capable of identifying dead code. This was proven for the code which the compiler was able to convert, as well as the manually created test cases.
 
-\section{Future work}
+\chapter{Future work}
 As it was originally aimed to be able to fully analyse C code an alternative to the initial compiler is vital. The compiler approach used does work for simple cases but is very hard to get fully operational for more complex cases due to the optimization cycles. These optimization cycles are a utopia and will be impossible to maintain considering that it is almost impossible to correctly identify every possible node configuration. A potential solution for this could be compilation to a lower level language such as LLVM. By doing this the knowledge of which line is unreachable would get lost but the complexity would get reduced and all compiler specific code would be removed. It would furthermore greatly increase the field in which this approach can be applied as almost every language can be converted to LLVM. For simpler languages such as LLVM it is much easier to directly analyse the code which thereby reduces the risk of misinterpretation as was often the case with parse tree analysis.
 
 Another optimisation that should at least be considered is the expansion of the lines that we can map to counter automata. This can either be more code statements that can be mapped to counter automata or more statements supported within the counter automaton itself. As it now stands we were only able to analyse 4\% of all the functions of the project. While it is true that those 4\% are most often core functions that are reused several times it would be even more useful if we could analyse a larger amount of functions.
 
 Further optimizations with regards to efficiency would also be greatly beneficial to the speed of this analysis. While the exact speed of the entire approach is very hard to correctly analyse due to the issues with the compiler, it was clear that the analysis for parametric one counter automata took very long which is a result of the explosion in the number of nodes. This could be avoided by performing another optimization cycle to the counter automaton before analysis. For example, chains of nodes without operations and conditions could simply be merged into one.
 
-\section{Conclusion}
+\chapter{Conclusion}
 In this paper we propose an algorithm to analyse the reachability of one counter automata. Two different approaches are given, one for non-parametric COCA and one for parametric COCA. Both make use of the concept of counter value reachability, which allows us to track whether or not there is a set of counter values which can be reached in a given node. if this interval is not empty we know that a node is reachable.
 
 The non-parametric approach makes use of a recursive evaluation of these reachability intervals where each transition that is capable of firing gets fired once per iteration. We also introduced the notion of acceleration in which we identify behaviour of loops by analysing past behaviour. This resulting pattern can then be used to calculate the final value of the loop, thus greatly reducing the number of updates needed before the intervals will reach their final value.
