@@ -1000,8 +1000,8 @@ From the initial state, we will start doing cycles in which we update all interv
 
 \begin{gather*}
 	\hspace{-125 pt} succ_{p, q}(R_i) := \bigcup \{R_i(q, l)\,|\,(q,z,l) \in T\}\\
-	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + (0, z]) \cap (q)\,|\,(p,z,q) \in T, z>0\}\\
-	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + (z, 0]) \cap \tau(q)\,|\,(p,z,q) \in T, z<0\}\\
+	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + (0, z]) \cap \tau(q)\,|\,(p,z,q) \in T, z>0\}\\
+	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + [z, 0)) \cap \tau(q)\,|\,(p,z,q) \in T, z<0\}\\
 	\hspace{-20 pt} \cup \bigcup \{R_i(p, q) \cap \tau(q)\,|\,(p,0,q) \in T\}
 \end{gather*}
 
@@ -1576,7 +1576,7 @@ The \textit{can update} condition will be applied on a preceding interval $I_{p_
 
 \begin{gather*}
 	\hspace{-6 pt} succ_{p, q}(R_i) := \bigcup \{(R_i(p, q) + (0, z]) \cap \tau(q)\,|\,(p,z,q) \in T, z>0\}\\
-	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + (z, 0]) \cap \tau(q)\,|\,(p,z,q) \in T, z<0\}\\
+	\hspace{60 pt} \cup \bigcup \{(R_i(p, q) + [z, 0)) \cap \tau(q)\,|\,(p,z,q) \in T, z<0\}\\
 	\hspace{-20 pt} \cup \bigcup \{R_i(p, q) \cap \tau(q)\,|\,(p,0,q) \in T\}
 \end{gather*}
 
